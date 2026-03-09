@@ -28,13 +28,17 @@ add_executable(secids_isin64_cli src/isin64_cli.cpp)
 target_link_libraries(secids_isin64_cli PRIVATE secids::isin64)
 target_compile_features(secids_isin64_cli PRIVATE cxx_std_20)
 
+add_executable(secids_cusip64_cli src/cusip64_cli.cpp)
+target_link_libraries(secids_cusip64_cli PRIVATE secids::isin64)
+target_compile_features(secids_cusip64_cli PRIVATE cxx_std_20)
+
 install(
     DIRECTORY include/
     DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
 )
 
 install(
-    TARGETS secids_isin64 secids_isin64_cli
+    TARGETS secids_isin64 secids_isin64_cli secids_cusip64_cli
     EXPORT secidsTargets
     INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
@@ -80,4 +84,8 @@ if(BUILD_TESTING)
     add_executable(secids_isin64_test test/isin64_test.cpp)
     target_link_libraries(secids_isin64_test PRIVATE secids::isin64)
     add_test(NAME secids_isin64_test COMMAND secids_isin64_test)
+
+    add_executable(secids_cusip64_test test/cusip64_test.cpp)
+    target_link_libraries(secids_cusip64_test PRIVATE secids::isin64)
+    add_test(NAME secids_cusip64_test COMMAND secids_cusip64_test)
 endif()
