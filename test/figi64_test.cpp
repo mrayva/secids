@@ -77,6 +77,7 @@ int main() {
     }
 
     assert(!encode_figi("BAG000BLNNV0").has_value());
+    assert(encode_figi("bbg000blnnv0").has_value());
     assert(encode_figi("BBG000BLNNV1").has_value());
     assert(!encode_valid_figi("BBG000BLNNV1").has_value());
     assert(!is_valid_figi("BBG000BLNNV1"));

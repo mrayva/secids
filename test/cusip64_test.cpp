@@ -71,6 +71,7 @@ int main() {
     }
 
     assert(is_valid_cusip_format("*@#ABCDE0"));
+    assert(encode_cusip("ej7125481").has_value());
     assert(!encode_cusip("bad-cusip").has_value());
     assert(encode_cusip("037833101").has_value());
     assert(!encode_valid_cusip("037833101").has_value());
@@ -96,6 +97,16 @@ int main() {
         invalid[8] = static_cast<char>('0' + ((invalid[8] - '0' + 1) % 10));
         assert(is_valid_cusip_format(invalid));
         assert(!has_valid_check_digit(invalid));
+    }
+
+    std::uniform_int_distribution<secids::cusip64::value_type> any_value_dist(0, secids::cusip64::max_value);
+    for (int i = 0; i < 10000; ++i) {
+        const auto value = any_value_dist(rng);
+        const auto decoded_value = decode_cusip(value);
+        assert(decoded_value.has_value());
+        const auto reencoded_value = encode_cusip(to_string(*decoded_value));
+        assert(reencoded_value.has_value());
+        assert(*reencoded_value == value);
     }
 
     std::cout << "secids_cusip64_test passed\n";

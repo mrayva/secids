@@ -12,36 +12,41 @@ include(CTest)
 include(CMakePackageConfigHelpers)
 include(GNUInstallDirs)
 
-add_library(secids_isin64 INTERFACE)
-add_library(secids::isin64 ALIAS secids_isin64)
-set_target_properties(secids_isin64 PROPERTIES EXPORT_NAME isin64)
+add_library(secids_headers INTERFACE)
+add_library(secids::secids ALIAS secids_headers)
+set_target_properties(secids_headers PROPERTIES EXPORT_NAME secids)
 
-target_include_directories(secids_isin64
+target_include_directories(secids_headers
     INTERFACE
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
         $<INSTALL_INTERFACE:include>
 )
 
-target_compile_features(secids_isin64 INTERFACE cxx_std_20)
+target_compile_features(secids_headers INTERFACE cxx_std_20)
+
+add_library(secids_isin64 INTERFACE)
+add_library(secids::isin64 ALIAS secids_isin64)
+set_target_properties(secids_isin64 PROPERTIES EXPORT_NAME isin64)
+target_link_libraries(secids_isin64 INTERFACE secids_headers)
 
 add_executable(secids_isin64_cli src/isin64_cli.cpp)
-target_link_libraries(secids_isin64_cli PRIVATE secids::isin64)
+target_link_libraries(secids_isin64_cli PRIVATE secids::secids)
 target_compile_features(secids_isin64_cli PRIVATE cxx_std_20)
 
 add_executable(secids_cusip64_cli src/cusip64_cli.cpp)
-target_link_libraries(secids_cusip64_cli PRIVATE secids::isin64)
+target_link_libraries(secids_cusip64_cli PRIVATE secids::secids)
 target_compile_features(secids_cusip64_cli PRIVATE cxx_std_20)
 
 add_executable(secids_sedol64_cli src/sedol64_cli.cpp)
-target_link_libraries(secids_sedol64_cli PRIVATE secids::isin64)
+target_link_libraries(secids_sedol64_cli PRIVATE secids::secids)
 target_compile_features(secids_sedol64_cli PRIVATE cxx_std_20)
 
 add_executable(secids_figi64_cli src/figi64_cli.cpp)
-target_link_libraries(secids_figi64_cli PRIVATE secids::isin64)
+target_link_libraries(secids_figi64_cli PRIVATE secids::secids)
 target_compile_features(secids_figi64_cli PRIVATE cxx_std_20)
 
 add_executable(secids_ric64_cli src/ric64_cli.cpp)
-target_link_libraries(secids_ric64_cli PRIVATE secids::isin64)
+target_link_libraries(secids_ric64_cli PRIVATE secids::secids)
 target_compile_features(secids_ric64_cli PRIVATE cxx_std_20)
 
 install(
@@ -50,7 +55,7 @@ install(
 )
 
 install(
-    TARGETS secids_isin64 secids_isin64_cli secids_cusip64_cli secids_sedol64_cli secids_figi64_cli secids_ric64_cli
+    TARGETS secids_headers secids_isin64 secids_isin64_cli secids_cusip64_cli secids_sedol64_cli secids_figi64_cli secids_ric64_cli
     EXPORT secidsTargets
     INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
@@ -94,22 +99,22 @@ include(CPack)
 
 if(BUILD_TESTING)
     add_executable(secids_isin64_test test/isin64_test.cpp)
-    target_link_libraries(secids_isin64_test PRIVATE secids::isin64)
+    target_link_libraries(secids_isin64_test PRIVATE secids::secids)
     add_test(NAME secids_isin64_test COMMAND secids_isin64_test)
 
     add_executable(secids_cusip64_test test/cusip64_test.cpp)
-    target_link_libraries(secids_cusip64_test PRIVATE secids::isin64)
+    target_link_libraries(secids_cusip64_test PRIVATE secids::secids)
     add_test(NAME secids_cusip64_test COMMAND secids_cusip64_test)
 
     add_executable(secids_sedol64_test test/sedol64_test.cpp)
-    target_link_libraries(secids_sedol64_test PRIVATE secids::isin64)
+    target_link_libraries(secids_sedol64_test PRIVATE secids::secids)
     add_test(NAME secids_sedol64_test COMMAND secids_sedol64_test)
 
     add_executable(secids_figi64_test test/figi64_test.cpp)
-    target_link_libraries(secids_figi64_test PRIVATE secids::isin64)
+    target_link_libraries(secids_figi64_test PRIVATE secids::secids)
     add_test(NAME secids_figi64_test COMMAND secids_figi64_test)
 
     add_executable(secids_ric64_test test/ric64_test.cpp)
-    target_link_libraries(secids_ric64_test PRIVATE secids::isin64)
+    target_link_libraries(secids_ric64_test PRIVATE secids::secids)
     add_test(NAME secids_ric64_test COMMAND secids_ric64_test)
 endif()

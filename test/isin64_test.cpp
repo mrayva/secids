@@ -69,6 +69,7 @@ int main() {
     }
 
     assert(!encode_isin("us0378331005!").has_value());
+    assert(encode_isin("us0378331005").has_value());
     assert(encode_isin("US0378331004").has_value());
     assert(!encode_valid_isin("US0378331004").has_value());
     assert(!is_valid_isin("US0378331004"));
@@ -93,6 +94,16 @@ int main() {
         invalid[11] = static_cast<char>('0' + ((invalid[11] - '0' + 1) % 10));
         assert(is_valid_isin_format(invalid));
         assert(!has_valid_check_digit(invalid));
+    }
+
+    std::uniform_int_distribution<secids::isin64::value_type> any_value_dist(0, secids::isin64::max_value);
+    for (int i = 0; i < 10000; ++i) {
+        const auto value = any_value_dist(rng);
+        const auto decoded_value = decode_isin(value);
+        assert(decoded_value.has_value());
+        const auto reencoded_value = encode_isin(to_string(*decoded_value));
+        assert(reencoded_value.has_value());
+        assert(*reencoded_value == value);
     }
 
     std::cout << "secids_isin64_test passed\n";

@@ -1,0 +1,64 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build-test:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            cxx: g++
+          - os: ubuntu-latest
+            cxx: clang++
+          - os: macos-latest
+            cxx: clang++
+    runs-on: ${{ matrix.os }}
+    env:
+      CXX: ${{ matrix.cxx }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: cmake --build build --config Release
+
+      - name: Test
+        run: ctest --test-dir build --output-on-failure -C Release
+
+      - name: Install
+        run: cmake --install build --prefix "$RUNNER_TEMP/secids-install"
+
+      - name: Consume package
+        shell: bash
+        run: |
+          mkdir -p "$RUNNER_TEMP/secids-consumer"
+          cat > "$RUNNER_TEMP/secids-consumer/CMakeLists.txt" <<'CMAKE'
+          cmake_minimum_required(VERSION 3.20)
+          project(secids_consumer LANGUAGES CXX)
+          find_package(secids CONFIG REQUIRED)
+          add_executable(secids_consumer main.cpp)
+          target_link_libraries(secids_consumer PRIVATE secids::secids)
+          CMAKE
+          cat > "$RUNNER_TEMP/secids-consumer/main.cpp" <<'CPP'
+          #include <iostream>
+          #include "secids/secids.hpp"
+          int main() {
+              auto isin = secids::isin64::encode_valid_isin("US0378331005");
+              auto cusip = secids::cusip64::encode_valid_cusip("037833100");
+              auto sedol = secids::sedol64::encode_valid_sedol("0263494");
+              auto figi = secids::figi64::encode_valid_figi("BBG000BLNNV0");
+              auto ric = secids::ric64::encode_ric("IBM.N");
+              if (!isin || !cusip || !sedol || !figi || !ric) return 1;
+              std::cout << *isin + *cusip + *sedol + *figi + *ric << '\n';
+              return 0;
+          }
+          CPP
+          cmake -S "$RUNNER_TEMP/secids-consumer" -B "$RUNNER_TEMP/secids-consumer/build" -DCMAKE_PREFIX_PATH="$RUNNER_TEMP/secids-install"
+          cmake --build "$RUNNER_TEMP/secids-consumer/build"
+          "$RUNNER_TEMP/secids-consumer/build/secids_consumer"

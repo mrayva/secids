@@ -65,6 +65,7 @@ int main() {
     }
 
     assert(!encode_sedol("ABCDEF1").has_value());
+    assert(encode_sedol("b0ybkj7").has_value());
     assert(encode_sedol("2936922").has_value());
     assert(!encode_valid_sedol("2936922").has_value());
     assert(!is_valid_sedol("2936922"));
@@ -89,6 +90,16 @@ int main() {
         invalid[6] = static_cast<char>('0' + ((invalid[6] - '0' + 1) % 10));
         assert(is_valid_sedol_format(invalid));
         assert(!has_valid_check_digit(invalid));
+    }
+
+    std::uniform_int_distribution<secids::sedol64::value_type> any_value_dist(0, secids::sedol64::max_value);
+    for (int i = 0; i < 10000; ++i) {
+        const auto value = any_value_dist(rng);
+        const auto decoded_value = decode_sedol(value);
+        assert(decoded_value.has_value());
+        const auto reencoded_value = encode_sedol(to_string(*decoded_value));
+        assert(reencoded_value.has_value());
+        assert(*reencoded_value == value);
     }
 
     std::cout << "secids_sedol64_test passed\n";

@@ -67,6 +67,8 @@ int main() {
     static_assert(!is_valid_ric_format("IBM.NYQ"));
     static_assert(!is_valid_ric_format("IBM1.N"));
     static_assert(!is_valid_ric_format("..DJI"));
+    static_assert(!is_valid_ric_format("CL"));
+    static_assert(!is_valid_ric_format(".SPX500"));
 
     constexpr auto equity_encoded = encode_ric("IBM.N");
     static_assert(equity_encoded.has_value());
@@ -92,6 +94,9 @@ int main() {
         assert(roundtrip.has_value());
         assert(to_string(*roundtrip) == ric);
     }
+
+    assert(encode_ric("ibm.n").has_value());
+    assert(encode_ric(".dji").has_value());
 
     std::mt19937_64 rng(0xA1C64ULL);
     for (int i = 0; i < 10000; ++i) {

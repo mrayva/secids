@@ -1,6 +1,7 @@
 #include <iostream>
 #include <string_view>
 
+#include "secids/detail/cli_support.hpp"
 #include "secids/figi64.hpp"
 
 namespace {
@@ -13,26 +14,6 @@ void print_usage(const char* argv0) {
         << "  " << argv0 << " decode <UINT64>\n"
         << "  " << argv0 << " check <FIGI>\n"
         << "  " << argv0 << " check-digit <11-char-prefix>\n";
-}
-
-std::optional<secids::figi64::value_type> parse_u64(std::string_view text) {
-    if (text.empty()) {
-        return std::nullopt;
-    }
-
-    secids::figi64::value_type value = 0;
-    for (char c : text) {
-        if (c < '0' || c > '9') {
-            return std::nullopt;
-        }
-        const auto digit = static_cast<secids::figi64::value_type>(c - '0');
-        const auto next = value * 10 + digit;
-        if (next < value) {
-            return std::nullopt;
-        }
-        value = next;
-    }
-    return value;
 }
 
 } // namespace
@@ -67,7 +48,7 @@ int main(int argc, char** argv) {
     }
 
     if (command == "decode") {
-        const auto value = parse_u64(argument);
+        const auto value = secids::detail::parse_u64<secids::figi64::value_type>(argument);
         if (!value) {
             std::cerr << "invalid uint64 value\n";
             return 1;

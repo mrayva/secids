@@ -47,6 +47,7 @@ cmake --install build --prefix /tmp/secids-install
 ```
 
 Installed artifacts:
+- header: `include/secids/secids.hpp`
 - header: `include/secids/isin64.hpp`
 - header: `include/secids/cusip64.hpp`
 - header: `include/secids/sedol64.hpp`
@@ -63,7 +64,7 @@ Installed artifacts:
 
 ```cpp
 #include <iostream>
-#include "secids/isin64.hpp"
+#include "secids/secids.hpp"
 
 int main() {
     auto encoded = secids::isin64::encode_valid_isin("US0378331005");
@@ -159,6 +160,10 @@ Semantics:
   - index RICs: `.CODE`, where `CODE` is `A-Z0-9{1,4}`
 - `decode_ric()`: decodes only that supported subset
 
+RIC scope limits:
+- supported: `IBM.N`, `AAPL.OQ`, `.DJI`, `.SPX`
+- unsupported by design: broader/synthetic commodity, futures, and other non-subset RICs such as `CL`, `EUR=`, or longer exchange suffix forms
+
 ## CLI
 
 ```bash
@@ -213,7 +218,7 @@ project(my_app LANGUAGES CXX)
 find_package(secids CONFIG REQUIRED)
 
 add_executable(my_app main.cpp)
-target_link_libraries(my_app PRIVATE secids::isin64)
+target_link_libraries(my_app PRIVATE secids::secids)
 ```
 
 Configure with:
