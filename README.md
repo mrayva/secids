@@ -1,16 +1,18 @@
 # secids
 
-Header-only C++20 library for reversible ISIN, CUSIP, SEDOL, and FIGI text to `uint64_t` encoding.
+Header-only C++20 library for reversible ISIN, CUSIP, SEDOL, FIGI, and scoped RIC text to `uint64_t` encoding.
 
 It provides:
 - structural ISIN validation
 - structural CUSIP validation
 - structural SEDOL validation
 - structural FIGI validation
+- scoped RIC validation
 - ISO 6166 check digit calculation and verification
 - CUSIP check digit calculation and verification
 - SEDOL check digit calculation and verification
 - FIGI check digit calculation and verification
+- RIC subset classification and validation
 - reversible `uint64_t` encoding/decoding
 - small CLIs
 - installable CMake package exports
@@ -49,10 +51,12 @@ Installed artifacts:
 - header: `include/secids/cusip64.hpp`
 - header: `include/secids/sedol64.hpp`
 - header: `include/secids/figi64.hpp`
+- header: `include/secids/ric64.hpp`
 - CLI: `bin/secids_isin64_cli`
 - CLI: `bin/secids_cusip64_cli`
 - CLI: `bin/secids_sedol64_cli`
 - CLI: `bin/secids_figi64_cli`
+- CLI: `bin/secids_ric64_cli`
 - CMake package: `lib/cmake/secids`
 
 ## Library Usage
@@ -127,6 +131,16 @@ std::optional<int> calculate_check_digit(std::string_view first_11_chars);
 std::string to_string(const decoded_type& figi);
 ```
 
+```cpp
+std::optional<std::uint64_t> encode_ric(std::string_view ric);
+std::optional<decoded_ric> decode_ric(std::uint64_t value);
+
+bool is_valid_ric_format(std::string_view ric);
+bool is_equity_ric(std::string_view ric);
+bool is_index_ric(std::string_view ric);
+std::string to_string(const decoded_ric& ric);
+```
+
 Semantics:
 - `encode_isin()`: requires valid ISIN character structure, does not require a correct check digit.
 - `encode_valid_isin()`: requires full ISIN validity, including the check digit.
@@ -140,6 +154,10 @@ Semantics:
 - `encode_figi()`: requires valid FIGI structure, including the restricted provider prefix and fixed third character `G`, but does not require a correct check digit.
 - `encode_valid_figi()`: requires full FIGI validity, including the check digit.
 - `decode_figi()`: decodes any in-range packed value back to a 12-character FIGI-shaped string.
+- `encode_ric()`: supports a scoped RIC subset only:
+  - equity RICs: `ROOT.EX`, where `ROOT` is `A-Z{1,4}` and `EX` is `A-Z{1,2}`
+  - index RICs: `.CODE`, where `CODE` is `A-Z0-9{1,4}`
+- `decode_ric()`: decodes only that supported subset
 
 ## CLI
 
@@ -167,6 +185,10 @@ Semantics:
 ./build/secids_figi64_cli decode 97913140
 ./build/secids_figi64_cli check BBG000BLNNV0
 ./build/secids_figi64_cli check-digit BBG000BLNNV
+
+./build/secids_ric64_cli encode IBM.N
+./build/secids_ric64_cli decode 1338100802
+./build/secids_ric64_cli check .DJI
 ```
 
 Commands:
@@ -178,6 +200,7 @@ Commands:
 - `secids_cusip64_cli` supports the same commands for CUSIPs with an 8-character prefix for `check-digit`
 - `secids_sedol64_cli` supports the same commands for SEDOLs with a 6-character prefix for `check-digit`
 - `secids_figi64_cli` supports the same commands for FIGIs with an 11-character prefix for `check-digit`
+- `secids_ric64_cli` supports `encode`, `decode`, and `check` for the supported equity/index RIC subset
 
 ## CMake Consumer
 
