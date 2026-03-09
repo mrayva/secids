@@ -1,0 +1,6 @@
+{
+  "name": "secids",
+  "version-string": "0.1.0",
+  "description": "Header-only C++20 ISIN <-> uint64_t encoder/decoder.",
+  "dependencies": []
+}
