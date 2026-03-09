@@ -1,12 +1,16 @@
 # secids
 
-Header-only C++20 library for reversible ISIN and CUSIP text to `uint64_t` encoding.
+Header-only C++20 library for reversible ISIN, CUSIP, SEDOL, and FIGI text to `uint64_t` encoding.
 
 It provides:
 - structural ISIN validation
 - structural CUSIP validation
+- structural SEDOL validation
+- structural FIGI validation
 - ISO 6166 check digit calculation and verification
 - CUSIP check digit calculation and verification
+- SEDOL check digit calculation and verification
+- FIGI check digit calculation and verification
 - reversible `uint64_t` encoding/decoding
 - small CLIs
 - installable CMake package exports
@@ -43,8 +47,12 @@ cmake --install build --prefix /tmp/secids-install
 Installed artifacts:
 - header: `include/secids/isin64.hpp`
 - header: `include/secids/cusip64.hpp`
+- header: `include/secids/sedol64.hpp`
+- header: `include/secids/figi64.hpp`
 - CLI: `bin/secids_isin64_cli`
 - CLI: `bin/secids_cusip64_cli`
+- CLI: `bin/secids_sedol64_cli`
+- CLI: `bin/secids_figi64_cli`
 - CMake package: `lib/cmake/secids`
 
 ## Library Usage
@@ -95,6 +103,30 @@ std::optional<int> calculate_check_digit(std::string_view first_8_chars);
 std::string to_string(const decoded_type& cusip);
 ```
 
+```cpp
+std::optional<std::uint64_t> encode_sedol(std::string_view sedol);
+std::optional<std::uint64_t> encode_valid_sedol(std::string_view sedol);
+std::optional<std::array<char, 7>> decode_sedol(std::uint64_t value);
+
+bool is_valid_sedol_format(std::string_view sedol);
+bool has_valid_check_digit(std::string_view sedol);
+bool is_valid_sedol(std::string_view sedol);
+std::optional<int> calculate_check_digit(std::string_view first_6_chars);
+std::string to_string(const decoded_type& sedol);
+```
+
+```cpp
+std::optional<std::uint64_t> encode_figi(std::string_view figi);
+std::optional<std::uint64_t> encode_valid_figi(std::string_view figi);
+std::optional<std::array<char, 12>> decode_figi(std::uint64_t value);
+
+bool is_valid_figi_format(std::string_view figi);
+bool has_valid_check_digit(std::string_view figi);
+bool is_valid_figi(std::string_view figi);
+std::optional<int> calculate_check_digit(std::string_view first_11_chars);
+std::string to_string(const decoded_type& figi);
+```
+
 Semantics:
 - `encode_isin()`: requires valid ISIN character structure, does not require a correct check digit.
 - `encode_valid_isin()`: requires full ISIN validity, including the check digit.
@@ -102,6 +134,12 @@ Semantics:
 - `encode_cusip()`: requires valid CUSIP character structure, does not require a correct check digit.
 - `encode_valid_cusip()`: requires full CUSIP validity, including the check digit.
 - `decode_cusip()`: decodes any in-range packed value back to a 9-character CUSIP-shaped string.
+- `encode_sedol()`: requires valid SEDOL character structure, including the no-vowels rule for the first 6 characters, but does not require a correct check digit.
+- `encode_valid_sedol()`: requires full SEDOL validity, including the check digit.
+- `decode_sedol()`: decodes any in-range packed value back to a 7-character SEDOL-shaped string.
+- `encode_figi()`: requires valid FIGI structure, including the restricted provider prefix and fixed third character `G`, but does not require a correct check digit.
+- `encode_valid_figi()`: requires full FIGI validity, including the check digit.
+- `decode_figi()`: decodes any in-range packed value back to a 12-character FIGI-shaped string.
 
 ## CLI
 
@@ -117,6 +155,18 @@ Semantics:
 ./build/secids_cusip64_cli decode 112064907630
 ./build/secids_cusip64_cli check 037833100
 ./build/secids_cusip64_cli check-digit 03783310
+
+./build/secids_sedol64_cli encode 0263494
+./build/secids_sedol64_cli encode-strict 0263494
+./build/secids_sedol64_cli decode 20288044
+./build/secids_sedol64_cli check 0263494
+./build/secids_sedol64_cli check-digit 026349
+
+./build/secids_figi64_cli encode BBG000BLNNV0
+./build/secids_figi64_cli encode-strict BBG000BLNNV0
+./build/secids_figi64_cli decode 97913140
+./build/secids_figi64_cli check BBG000BLNNV0
+./build/secids_figi64_cli check-digit BBG000BLNNV
 ```
 
 Commands:
@@ -126,6 +176,8 @@ Commands:
 - `check <ISIN>`: print format validity and check-digit validity
 - `check-digit <11-char-prefix>`: compute the final check digit
 - `secids_cusip64_cli` supports the same commands for CUSIPs with an 8-character prefix for `check-digit`
+- `secids_sedol64_cli` supports the same commands for SEDOLs with a 6-character prefix for `check-digit`
+- `secids_figi64_cli` supports the same commands for FIGIs with an 11-character prefix for `check-digit`
 
 ## CMake Consumer
 
