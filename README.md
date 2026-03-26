@@ -1,6 +1,6 @@
 # secids
 
-Header-only C++20 library for reversible ISIN, CUSIP, SEDOL, FIGI, and scoped RIC text to `uint64_t` encoding.
+Header-only C++20 library for reversible ISIN, CUSIP, SEDOL, FIGI, scoped RIC text, and direct MIC packing.
 
 It provides:
 - structural ISIN validation
@@ -8,6 +8,7 @@ It provides:
 - structural SEDOL validation
 - structural FIGI validation
 - scoped RIC validation
+- direct MIC packing/unpacking
 - ISO 6166 check digit calculation and verification
 - CUSIP check digit calculation and verification
 - SEDOL check digit calculation and verification
@@ -52,6 +53,7 @@ Installed artifacts:
 - header: `include/secids/cusip64.hpp`
 - header: `include/secids/sedol64.hpp`
 - header: `include/secids/figi64.hpp`
+- header: `include/secids/mic32.hpp`
 - header: `include/secids/ric64.hpp`
 - CLI: `bin/secids_isin64_cli`
 - CLI: `bin/secids_cusip64_cli`
@@ -142,6 +144,13 @@ bool is_index_ric(std::string_view ric);
 std::string to_string(const decoded_ric& ric);
 ```
 
+```cpp
+std::optional<std::uint32_t> pack_mic32(std::string_view mic);
+std::optional<std::array<char, 4>> unpack_mic32(std::uint32_t value);
+bool is_valid_mic_format(std::string_view mic);
+std::string to_string(const decoded_type& mic);
+```
+
 Semantics:
 - `encode_isin()`: requires valid ISIN character structure, does not require a correct check digit.
 - `encode_valid_isin()`: requires full ISIN validity, including the check digit.
@@ -159,6 +168,8 @@ Semantics:
   - equity RICs: `ROOT.EX`, where `ROOT` is `A-Z{1,4}` and `EX` is `A-Z{1,2}`
   - index RICs: `.CODE`, where `CODE` is `A-Z0-9{1,4}`
 - `decode_ric()`: decodes only that supported subset
+- `pack_mic32()`: directly packs a 4-character MIC as uppercase ASCII bytes into a `uint32_t`
+- `unpack_mic32()`: reverses that packing if the resulting 4 bytes are valid MIC characters
 
 RIC scope limits:
 - supported: `IBM.N`, `AAPL.OQ`, `.DJI`, `.SPX`

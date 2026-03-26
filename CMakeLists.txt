@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.20)
 project(
     secids
     VERSION 0.1.0
-    DESCRIPTION "Header-only C++20 ISIN to uint64_t encoder/decoder"
+    DESCRIPTION "Header-only C++20 market identifier packing and validation library"
     HOMEPAGE_URL "https://github.com/mrayva/secids"
     LANGUAGES CXX
 )
@@ -117,4 +117,8 @@ if(BUILD_TESTING)
     add_executable(secids_ric64_test test/ric64_test.cpp)
     target_link_libraries(secids_ric64_test PRIVATE secids::secids)
     add_test(NAME secids_ric64_test COMMAND secids_ric64_test)
+
+    add_executable(secids_mic32_test test/mic32_test.cpp)
+    target_link_libraries(secids_mic32_test PRIVATE secids::secids)
+    add_test(NAME secids_mic32_test COMMAND secids_mic32_test)
 endif()
