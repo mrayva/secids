@@ -12,6 +12,7 @@ It provides:
 - generated ISO 3166 country metadata/lookups
 - generated ISO 4217 currency metadata/lookups
 - runtime ISO CSV/JSON loading helpers
+- optional `string_bimap`-backed OpenFIGI value-domain snapshots
 - ISO 6166 check digit calculation and verification
 - CUSIP check digit calculation and verification
 - SEDOL check digit calculation and verification
@@ -60,6 +61,11 @@ Installed artifacts:
 - header: `include/secids/iso4217_currency.hpp`
 - header: `include/secids/iso3166_country.hpp`
 - header: `include/secids/runtime/iso_data_loader.hpp`
+- header: `include/secids/openfigi/vocab_types.hpp`
+- header: `include/secids/openfigi/vocab_snapshot.hpp`
+- header: `include/secids/openfigi/vocab_loader.hpp`
+- header: `include/secids/openfigi/vocab_registry.hpp`
+- header: `include/secids/openfigi/vocab_ids.hpp`
 - header: `include/secids/ric64.hpp`
 - CLI: `bin/secids_isin64_cli`
 - CLI: `bin/secids_cusip64_cli`
@@ -213,6 +219,7 @@ Semantics:
 - `runtime::load_iso3166_country_csv()`: loads the vendored ISO-3166 CSV shape at runtime
 - `runtime::load_iso4217_currency_csv()`: loads the vendored ISO-4217 CSV shape at runtime
 - `runtime::load_iso4217_currency_json()`: loads the common object-shaped ISO-4217 JSON form used by `ourworldincode/currency`
+- `openfigi`: optional scaffold for `string_bimap`-backed OpenFIGI mapping-value domains such as `micCode` and `exchCode`
 
 RIC scope limits:
 - supported: `IBM.N`, `AAPL.OQ`, `.DJI`, `.SPX`
@@ -295,6 +302,56 @@ cmake --build build --target update_iso_sources
 
 Additional vendored runtime source after refresh:
 - `data/iso4217-json/currencies.json`
+
+## OpenFIGI Vocab Scaffold
+
+Optional module headers:
+- `include/secids/openfigi/vocab_types.hpp`
+- `include/secids/openfigi/vocab_snapshot.hpp`
+- `include/secids/openfigi/vocab_loader.hpp`
+- `include/secids/openfigi/vocab_registry.hpp`
+- `include/secids/openfigi/vocab_ids.hpp`
+
+Optional tools:
+- `tools/fetch_openfigi_values.sh`
+- `tools/generate_openfigi_vocab_ids.py`
+- `src/openfigi_vocab_cli.cpp`
+
+Enable the module with a local `string_bimap` checkout:
+
+```bash
+cmake -S . -B build-openfigi \
+  -DSECIDS_WITH_OPENFIGI_VOCAB=ON \
+  -DSECIDS_STRING_BIMAP_ROOT=/tmp/string_bimap_inspect
+cmake --build build-openfigi
+ctest --test-dir build-openfigi --output-on-failure
+```
+
+Runtime snapshot functionality requires a `string_bimap` build with `PthashBimap` available.
+If the checkout is present but pthash support is not enabled, the scaffold still builds, but snapshot-building calls will report unavailable/skip.
+
+Fetch raw OpenFIGI value domains:
+
+```bash
+bash tools/fetch_openfigi_values.sh
+cmake --build build --target fetch_openfigi_values
+```
+
+CLI examples:
+
+```bash
+./build-openfigi/secids_openfigi_vocab_cli build micCode data/openfigi data/openfigi-snapshots
+./build-openfigi/secids_openfigi_vocab_cli lookup-id micCode data/openfigi-snapshots XNAS
+./build-openfigi/secids_openfigi_vocab_cli lookup-value micCode data/openfigi-snapshots 0
+./build-openfigi/secids_openfigi_vocab_cli stats micCode data/openfigi-snapshots
+```
+
+Current scaffold scope:
+- raw JSON-array fetch
+- deterministic normalization and dedupe through `vocab_snapshot`
+- persisted `string_bimap::PthashBimap` snapshots
+- directory-based snapshot registry
+- generated ID-header tool for small fixed domains
 
 Packing opportunities from the CSV:
 - `AlphabeticCode`: fits in `uint16_t`

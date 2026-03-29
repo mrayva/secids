@@ -8,6 +8,9 @@ project(
     LANGUAGES CXX
 )
 
+option(SECIDS_WITH_OPENFIGI_VOCAB "Build optional string_bimap-backed OpenFIGI vocab support" OFF)
+set(SECIDS_STRING_BIMAP_ROOT "" CACHE PATH "Optional path to a local string_bimap checkout")
+
 include(CTest)
 include(CMakePackageConfigHelpers)
 include(GNUInstallDirs)
@@ -25,6 +28,26 @@ target_include_directories(secids_headers
 )
 
 target_compile_features(secids_headers INTERFACE cxx_std_20)
+
+if(SECIDS_WITH_OPENFIGI_VOCAB)
+    if(SECIDS_STRING_BIMAP_ROOT)
+        set(STRING_BIMAP_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+        set(STRING_BIMAP_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+        set(STRING_BIMAP_BUILD_BENCHMARKS OFF CACHE BOOL "" FORCE)
+        add_subdirectory(${SECIDS_STRING_BIMAP_ROOT} ${CMAKE_CURRENT_BINARY_DIR}/string_bimap EXCLUDE_FROM_ALL)
+    else()
+        find_package(string_bimap CONFIG QUIET)
+    endif()
+
+    if(NOT TARGET string_bimap::string_bimap)
+        message(FATAL_ERROR "SECIDS_WITH_OPENFIGI_VOCAB=ON requires string_bimap. Set SECIDS_STRING_BIMAP_ROOT or install string_bimap.")
+    endif()
+
+    add_library(secids_openfigi_vocab INTERFACE)
+    add_library(secids::openfigi_vocab ALIAS secids_openfigi_vocab)
+    set_target_properties(secids_openfigi_vocab PROPERTIES EXPORT_NAME openfigi_vocab)
+    target_link_libraries(secids_openfigi_vocab INTERFACE secids_headers string_bimap::string_bimap)
+endif()
 
 if(Python3_Interpreter_FOUND)
     add_custom_target(
@@ -58,6 +81,13 @@ if(BASH_EXECUTABLE)
             COMMENT "Fetching upstream ISO source data and regenerating headers"
         )
     endif()
+
+    add_custom_target(
+        fetch_openfigi_values
+        COMMAND ${BASH_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tools/fetch_openfigi_values.sh
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        COMMENT "Fetching OpenFIGI mapping value domains"
+    )
 endif()
 
 add_library(secids_isin64 INTERFACE)
@@ -96,6 +126,19 @@ install(
     INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
+
+if(TARGET secids_openfigi_vocab)
+    add_executable(secids_openfigi_vocab_cli src/openfigi_vocab_cli.cpp)
+    target_link_libraries(secids_openfigi_vocab_cli PRIVATE secids::openfigi_vocab)
+    target_compile_features(secids_openfigi_vocab_cli PRIVATE cxx_std_20)
+
+    install(
+        TARGETS secids_openfigi_vocab secids_openfigi_vocab_cli
+        EXPORT secidsTargets
+        INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+    )
+endif()
 
 install(
     EXPORT secidsTargets
@@ -169,4 +212,10 @@ if(BUILD_TESTING)
     add_executable(secids_iso_data_loader_test test/iso_data_loader_test.cpp)
     target_link_libraries(secids_iso_data_loader_test PRIVATE secids::secids)
     add_test(NAME secids_iso_data_loader_test COMMAND secids_iso_data_loader_test)
+
+    if(TARGET secids_openfigi_vocab)
+        add_executable(secids_openfigi_vocab_test test/openfigi_vocab_test.cpp)
+        target_link_libraries(secids_openfigi_vocab_test PRIVATE secids::openfigi_vocab)
+        add_test(NAME secids_openfigi_vocab_test COMMAND secids_openfigi_vocab_test)
+    endif()
 endif()
