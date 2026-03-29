@@ -11,6 +11,7 @@ It provides:
 - direct MIC packing/unpacking
 - generated ISO 3166 country metadata/lookups
 - generated ISO 4217 currency metadata/lookups
+- runtime ISO CSV/JSON loading helpers
 - ISO 6166 check digit calculation and verification
 - CUSIP check digit calculation and verification
 - SEDOL check digit calculation and verification
@@ -58,6 +59,7 @@ Installed artifacts:
 - header: `include/secids/mic32.hpp`
 - header: `include/secids/iso4217_currency.hpp`
 - header: `include/secids/iso3166_country.hpp`
+- header: `include/secids/runtime/iso_data_loader.hpp`
 - header: `include/secids/ric64.hpp`
 - CLI: `bin/secids_isin64_cli`
 - CLI: `bin/secids_cusip64_cli`
@@ -178,6 +180,12 @@ std::string format_numeric_code(std::uint16_t value);
 std::string minor_unit_to_string(std::uint8_t value);
 ```
 
+```cpp
+std::vector<iso3166_country_csv_row> load_iso3166_country_csv(const std::filesystem::path& path);
+std::vector<iso4217_currency_csv_row> load_iso4217_currency_csv(const std::filesystem::path& path);
+std::vector<iso4217_currency_json_row> load_iso4217_currency_json(const std::filesystem::path& path);
+```
+
 Semantics:
 - `encode_isin()`: requires valid ISIN character structure, does not require a correct check digit.
 - `encode_valid_isin()`: requires full ISIN validity, including the check digit.
@@ -202,6 +210,9 @@ Semantics:
   - source rows are entity-level
   - generated table is current-only and code-centric
   - rows without an alphabetic or numeric ISO-4217 code are excluded
+- `runtime::load_iso3166_country_csv()`: loads the vendored ISO-3166 CSV shape at runtime
+- `runtime::load_iso4217_currency_csv()`: loads the vendored ISO-4217 CSV shape at runtime
+- `runtime::load_iso4217_currency_json()`: loads the common object-shaped ISO-4217 JSON form used by `ourworldincode/currency`
 
 RIC scope limits:
 - supported: `IBM.N`, `AAPL.OQ`, `.DJI`, `.SPX`
@@ -262,6 +273,28 @@ Regenerate with:
 ```bash
 python3 tools/generate_iso4217_currency_header.py
 ```
+
+Refresh vendored ISO sources from upstream:
+
+```bash
+bash tools/fetch_iso_sources.sh
+```
+
+Fetch and regenerate in one step:
+
+```bash
+bash tools/update_iso_sources.sh
+```
+
+CMake targets:
+
+```bash
+cmake --build build --target fetch_iso_sources
+cmake --build build --target update_iso_sources
+```
+
+Additional vendored runtime source after refresh:
+- `data/iso4217-json/currencies.json`
 
 Packing opportunities from the CSV:
 - `AlphabeticCode`: fits in `uint16_t`

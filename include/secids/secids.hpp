@@ -8,6 +8,7 @@
 #include "secids/iso4217_currency.hpp"
 #include "secids/iso3166_country.hpp"
 #include "secids/ric64.hpp"
+#include "secids/runtime/iso_data_loader.hpp"
 #include "secids/sedol64.hpp"
 
 #endif

@@ -12,6 +12,7 @@ include(CTest)
 include(CMakePackageConfigHelpers)
 include(GNUInstallDirs)
 find_package(Python3 COMPONENTS Interpreter QUIET)
+find_program(BASH_EXECUTABLE bash)
 
 add_library(secids_headers INTERFACE)
 add_library(secids::secids ALIAS secids_headers)
@@ -39,6 +40,24 @@ if(Python3_Interpreter_FOUND)
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
         COMMENT "Generating ISO-4217 currency header from vendored CSV"
     )
+endif()
+
+if(BASH_EXECUTABLE)
+    add_custom_target(
+        fetch_iso_sources
+        COMMAND ${BASH_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tools/fetch_iso_sources.sh
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        COMMENT "Fetching vendored ISO source data from upstream"
+    )
+
+    if(Python3_Interpreter_FOUND)
+        add_custom_target(
+            update_iso_sources
+            COMMAND ${BASH_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tools/update_iso_sources.sh
+            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+            COMMENT "Fetching upstream ISO source data and regenerating headers"
+        )
+    endif()
 endif()
 
 add_library(secids_isin64 INTERFACE)
@@ -146,4 +165,8 @@ if(BUILD_TESTING)
     add_executable(secids_iso4217_currency_test test/iso4217_currency_test.cpp)
     target_link_libraries(secids_iso4217_currency_test PRIVATE secids::secids)
     add_test(NAME secids_iso4217_currency_test COMMAND secids_iso4217_currency_test)
+
+    add_executable(secids_iso_data_loader_test test/iso_data_loader_test.cpp)
+    target_link_libraries(secids_iso_data_loader_test PRIVATE secids::secids)
+    add_test(NAME secids_iso_data_loader_test COMMAND secids_iso_data_loader_test)
 endif()
