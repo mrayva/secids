@@ -10,6 +10,8 @@ int main() {
     static_assert(country_count == 249);
     static_assert(pack_alpha2("US").has_value());
     static_assert(pack_alpha3("USA").has_value());
+    static_assert(pack_alpha2("AA").value() == 0);
+    static_assert(pack_alpha3("AAA").value() == 0);
     static_assert(!pack_alpha2("U1").has_value());
     static_assert(!pack_alpha3("US1").has_value());
 
@@ -27,6 +29,8 @@ int main() {
     assert(gb != nullptr);
     assert(unpack_alpha2(gb->alpha2) == "GB");
     assert(format_numeric_code(gb->country_code) == "826");
+    assert(pack_alpha2("GB").value() == gb->alpha2);
+    assert(pack_alpha3("GBR").value() == gb->alpha3);
 
     const auto* afghanistan = find_by_country_code(4);
     assert(afghanistan != nullptr);

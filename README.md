@@ -1,6 +1,6 @@
 # secids
 
-Header-only C++20 library for reversible ISIN, CUSIP, SEDOL, FIGI, scoped RIC text, direct MIC packing, and generated ISO 3166 country metadata.
+Header-only C++20 library for reversible ISIN, CUSIP, SEDOL, FIGI, scoped RIC text, direct MIC packing, and generated ISO 3166 / ISO 4217 metadata.
 
 It provides:
 - structural ISIN validation
@@ -10,6 +10,7 @@ It provides:
 - scoped RIC validation
 - direct MIC packing/unpacking
 - generated ISO 3166 country metadata/lookups
+- generated ISO 4217 currency metadata/lookups
 - ISO 6166 check digit calculation and verification
 - CUSIP check digit calculation and verification
 - SEDOL check digit calculation and verification
@@ -55,6 +56,7 @@ Installed artifacts:
 - header: `include/secids/sedol64.hpp`
 - header: `include/secids/figi64.hpp`
 - header: `include/secids/mic32.hpp`
+- header: `include/secids/iso4217_currency.hpp`
 - header: `include/secids/iso3166_country.hpp`
 - header: `include/secids/ric64.hpp`
 - CLI: `bin/secids_isin64_cli`
@@ -166,6 +168,16 @@ std::string format_numeric_code(std::uint16_t value);
 std::string iso_3166_2_code(const country_entry& entry);
 ```
 
+```cpp
+constexpr std::size_t currency_count;
+constexpr std::optional<std::uint16_t> pack_alphabetic_code(std::string_view code);
+constexpr const currency_entry* find_by_alphabetic_code(std::string_view code);
+constexpr const currency_entry* find_by_numeric_code(std::uint16_t code);
+std::string unpack_alphabetic_code(alphabetic_packed_type value);
+std::string format_numeric_code(std::uint16_t value);
+std::string minor_unit_to_string(std::uint8_t value);
+```
+
 Semantics:
 - `encode_isin()`: requires valid ISIN character structure, does not require a correct check digit.
 - `encode_valid_isin()`: requires full ISIN validity, including the check digit.
@@ -186,6 +198,10 @@ Semantics:
 - `pack_mic32()`: directly packs a 4-character MIC as uppercase ASCII bytes into a `uint32_t`
 - `unpack_mic32()`: reverses that packing if the resulting 4 bytes are valid MIC characters
 - `iso3166_country`: generated from the vendored CSV in `data/iso3166/all.csv`
+- `iso4217_currency`: generated from the vendored CSV in `data/iso4217/codes-all.csv`
+  - source rows are entity-level
+  - generated table is current-only and code-centric
+  - rows without an alphabetic or numeric ISO-4217 code are excluded
 
 RIC scope limits:
 - supported: `IBM.N`, `AAPL.OQ`, `.DJI`, `.SPX`
@@ -210,7 +226,7 @@ python3 tools/generate_iso3166_country_header.py
 
 Packing opportunities from the CSV:
 - `alpha-2`: fits in `uint16_t`
-  - stored as 2 uppercase ASCII bytes
+  - stored as a compact base-26 value
 - `alpha-3`: fits in `uint16_t`
   - stored as a compact base-26 value
 - `country-code`: fits in `uint16_t`
@@ -229,6 +245,49 @@ Packing opportunities from the CSV:
   - `missing_code` sentinel used for blanks
 - `name`: does not pack cleanly into a small fixed integer
   - remains a UTF-8 string view
+
+## ISO 4217 Dataset
+
+Vendored source:
+- `data/iso4217/codes-all.csv`
+
+Generator:
+- `tools/generate_iso4217_currency_header.py`
+
+Generated header:
+- `include/secids/iso4217_currency.hpp`
+
+Regenerate with:
+
+```bash
+python3 tools/generate_iso4217_currency_header.py
+```
+
+Packing opportunities from the CSV:
+- `AlphabeticCode`: fits in `uint16_t`
+  - stored as a compact base-26 value over `A-Z`
+- `NumericCode`: fits in `uint16_t`
+  - numeric value `0..999`, render with zero-padding when needed
+- `MinorUnit`: fits in `uint8_t`
+  - decimal values stored directly
+  - `variable_minor_unit` sentinel used for `-`
+  - `missing_minor_unit` sentinel used for blanks
+- `Currency`: does not pack cleanly into a small fixed integer
+  - remains a UTF-8 string view
+
+Layout:
+- one dense `currencies[]` table
+- sparse O(1) `alphabetic_to_row[17576]`
+- sparse O(1) `numeric_to_row[1000]`
+
+Shared alphabetic codec:
+- ISO alphabetic keys in this library use one shared compact `uint16_t` codec
+- supported lengths: `2` and `3`
+- alphabet: `A-Z`
+- examples:
+  - ISO 3166 `alpha-2`
+  - ISO 3166 `alpha-3`
+  - ISO 4217 alphabetic currency code
 
 ## CLI
 

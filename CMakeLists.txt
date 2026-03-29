@@ -32,6 +32,13 @@ if(Python3_Interpreter_FOUND)
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
         COMMENT "Generating ISO-3166 country header from vendored CSV"
     )
+
+    add_custom_target(
+        generate_iso4217_currency_header
+        COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_iso4217_currency_header.py
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        COMMENT "Generating ISO-4217 currency header from vendored CSV"
+    )
 endif()
 
 add_library(secids_isin64 INTERFACE)
@@ -135,4 +142,8 @@ if(BUILD_TESTING)
     add_executable(secids_iso3166_country_test test/iso3166_country_test.cpp)
     target_link_libraries(secids_iso3166_country_test PRIVATE secids::secids)
     add_test(NAME secids_iso3166_country_test COMMAND secids_iso3166_country_test)
+
+    add_executable(secids_iso4217_currency_test test/iso4217_currency_test.cpp)
+    target_link_libraries(secids_iso4217_currency_test PRIVATE secids::secids)
+    add_test(NAME secids_iso4217_currency_test COMMAND secids_iso4217_currency_test)
 endif()
