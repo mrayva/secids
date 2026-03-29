@@ -11,6 +11,7 @@ project(
 include(CTest)
 include(CMakePackageConfigHelpers)
 include(GNUInstallDirs)
+find_package(Python3 COMPONENTS Interpreter QUIET)
 
 add_library(secids_headers INTERFACE)
 add_library(secids::secids ALIAS secids_headers)
@@ -23,6 +24,15 @@ target_include_directories(secids_headers
 )
 
 target_compile_features(secids_headers INTERFACE cxx_std_20)
+
+if(Python3_Interpreter_FOUND)
+    add_custom_target(
+        generate_iso3166_country_header
+        COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_iso3166_country_header.py
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        COMMENT "Generating ISO-3166 country header from vendored CSV"
+    )
+endif()
 
 add_library(secids_isin64 INTERFACE)
 add_library(secids::isin64 ALIAS secids_isin64)
@@ -121,4 +131,8 @@ if(BUILD_TESTING)
     add_executable(secids_mic32_test test/mic32_test.cpp)
     target_link_libraries(secids_mic32_test PRIVATE secids::secids)
     add_test(NAME secids_mic32_test COMMAND secids_mic32_test)
+
+    add_executable(secids_iso3166_country_test test/iso3166_country_test.cpp)
+    target_link_libraries(secids_iso3166_country_test PRIVATE secids::secids)
+    add_test(NAME secids_iso3166_country_test COMMAND secids_iso3166_country_test)
 endif()

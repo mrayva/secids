@@ -1,6 +1,6 @@
 # secids
 
-Header-only C++20 library for reversible ISIN, CUSIP, SEDOL, FIGI, scoped RIC text, and direct MIC packing.
+Header-only C++20 library for reversible ISIN, CUSIP, SEDOL, FIGI, scoped RIC text, direct MIC packing, and generated ISO 3166 country metadata.
 
 It provides:
 - structural ISIN validation
@@ -9,6 +9,7 @@ It provides:
 - structural FIGI validation
 - scoped RIC validation
 - direct MIC packing/unpacking
+- generated ISO 3166 country metadata/lookups
 - ISO 6166 check digit calculation and verification
 - CUSIP check digit calculation and verification
 - SEDOL check digit calculation and verification
@@ -54,6 +55,7 @@ Installed artifacts:
 - header: `include/secids/sedol64.hpp`
 - header: `include/secids/figi64.hpp`
 - header: `include/secids/mic32.hpp`
+- header: `include/secids/iso3166_country.hpp`
 - header: `include/secids/ric64.hpp`
 - CLI: `bin/secids_isin64_cli`
 - CLI: `bin/secids_cusip64_cli`
@@ -151,6 +153,19 @@ bool is_valid_mic_format(std::string_view mic);
 std::string to_string(const decoded_type& mic);
 ```
 
+```cpp
+constexpr std::size_t country_count;
+constexpr std::optional<std::uint16_t> pack_alpha2(std::string_view code);
+constexpr std::optional<std::uint16_t> pack_alpha3(std::string_view code);
+constexpr const country_entry* find_by_alpha2(std::string_view code);
+constexpr const country_entry* find_by_alpha3(std::string_view code);
+constexpr const country_entry* find_by_country_code(std::uint16_t code);
+std::string unpack_alpha2(alpha2_packed_type value);
+std::string unpack_alpha3(alpha3_packed_type value);
+std::string format_numeric_code(std::uint16_t value);
+std::string iso_3166_2_code(const country_entry& entry);
+```
+
 Semantics:
 - `encode_isin()`: requires valid ISIN character structure, does not require a correct check digit.
 - `encode_valid_isin()`: requires full ISIN validity, including the check digit.
@@ -170,10 +185,50 @@ Semantics:
 - `decode_ric()`: decodes only that supported subset
 - `pack_mic32()`: directly packs a 4-character MIC as uppercase ASCII bytes into a `uint32_t`
 - `unpack_mic32()`: reverses that packing if the resulting 4 bytes are valid MIC characters
+- `iso3166_country`: generated from the vendored CSV in `data/iso3166/all.csv`
 
 RIC scope limits:
 - supported: `IBM.N`, `AAPL.OQ`, `.DJI`, `.SPX`
 - unsupported by design: broader/synthetic commodity, futures, and other non-subset RICs such as `CL`, `EUR=`, or longer exchange suffix forms
+
+## ISO 3166 Dataset
+
+Vendored source:
+- `data/iso3166/all.csv`
+
+Generator:
+- `tools/generate_iso3166_country_header.py`
+
+Generated header:
+- `include/secids/iso3166_country.hpp`
+
+Regenerate with:
+
+```bash
+python3 tools/generate_iso3166_country_header.py
+```
+
+Packing opportunities from the CSV:
+- `alpha-2`: fits in `uint16_t`
+  - stored as 2 uppercase ASCII bytes
+- `alpha-3`: fits in `uint16_t`
+  - stored as a compact base-26 value
+- `country-code`: fits in `uint16_t`
+  - numeric value `0..999`, render with zero-padding when needed
+- `iso_3166-2`: no separate storage needed
+  - derived as `"ISO 3166-2:" + alpha-2`
+- `region`: fits in `uint8_t`
+  - stored as a small enum
+- `sub-region`: fits in `uint8_t`
+  - stored as a small enum
+- `intermediate-region`: fits in `uint8_t`
+  - stored as a small enum with `unspecified`
+- `region-code`: fits in `uint16_t`
+- `sub-region-code`: fits in `uint16_t`
+- `intermediate-region-code`: fits in `uint16_t`
+  - `missing_code` sentinel used for blanks
+- `name`: does not pack cleanly into a small fixed integer
+  - remains a UTF-8 string view
 
 ## CLI
 
