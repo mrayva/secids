@@ -14,6 +14,8 @@ int main() {
     static_assert(pack_alpha3("AAA").value() == 0);
     static_assert(!pack_alpha2("U1").has_value());
     static_assert(!pack_alpha3("US1").has_value());
+    assert(unpack_alpha2(26U * 26U).empty());
+    assert(unpack_alpha3(26U * 26U * 26U).empty());
 
     const auto* us = find_by_alpha2("US");
     assert(us != nullptr);
@@ -44,6 +46,7 @@ int main() {
     const auto* missing = find_by_alpha2("ZZ");
     assert(missing == nullptr);
     assert(format_numeric_code(missing_code).empty());
+    assert(format_numeric_code(1000).empty());
 
     std::size_t europe_count = 0;
     for (const auto& country : countries) {

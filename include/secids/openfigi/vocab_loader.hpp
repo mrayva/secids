@@ -9,6 +9,10 @@
 
 #include "secids/openfigi/vocab_snapshot.hpp"
 
+#if SECIDS_OPENFIGI_VOCAB_HAS_STRING_BIMAP
+#include "string_bimap/pthash_bimap.hpp"
+#endif
+
 namespace secids::openfigi {
 
 inline std::vector<std::string> load_raw_values_json_array(const std::filesystem::path& path) {
@@ -54,7 +58,7 @@ inline void write_manifest_json(const std::filesystem::path& root) {
     }
 
     out << "{\n";
-    out << "  \"version\": 1,\n";
+    out << "  \"version\": 2,\n";
     out << "  \"domains\": [\n";
     for (std::size_t i = 0; i < all_vocab_domains.size(); ++i) {
         const auto domain = all_vocab_domains[i];

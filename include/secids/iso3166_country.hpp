@@ -90,7 +90,7 @@ inline std::string unpack_alpha3(alpha3_packed_type value) {
 }
 
 inline std::string format_numeric_code(std::uint16_t value) {
-    if (value == missing_code) return {};
+    if (value == missing_code || value > 999U) return {};
     std::string out(3, "0"[0]);
     out[0] = static_cast<char>("0"[0] + ((value / 100U) % 10U));
     out[1] = static_cast<char>("0"[0] + ((value / 10U) % 10U));

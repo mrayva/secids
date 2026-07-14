@@ -14,4 +14,7 @@ curl -L "https://raw.githubusercontent.com/datasets/currency-codes/main/data/cod
 curl -L "https://raw.githubusercontent.com/ourworldincode/currency/main/currencies.json" \
   -o "${ROOT_DIR}/data/iso4217-json/currencies.json"
 
+python3 "${ROOT_DIR}/tools/generate_iso_source_manifest.py" \
+  --retrieved-at "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
 printf 'Fetched ISO-3166 and ISO-4217 source data into %s/data\n' "${ROOT_DIR}"

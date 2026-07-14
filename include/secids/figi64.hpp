@@ -217,6 +217,10 @@ constexpr std::optional<decoded_type> decode_figi(value_type value) noexcept {
     value /= 21;
     out[0] = detail::decode_consonant(value % 21);
 
+    if (detail::is_disallowed_prefix(out[0], out[1])) {
+        return std::nullopt;
+    }
+
     return out;
 }
 

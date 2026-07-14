@@ -9,6 +9,7 @@ project(
 )
 
 option(SECIDS_WITH_OPENFIGI_VOCAB "Build optional string_bimap-backed OpenFIGI vocab support" OFF)
+option(SECIDS_BUILD_FUZZERS "Build Clang libFuzzer targets" OFF)
 set(SECIDS_STRING_BIMAP_ROOT "" CACHE PATH "Optional path to a local string_bimap checkout")
 
 include(CTest)
@@ -34,7 +35,8 @@ if(SECIDS_WITH_OPENFIGI_VOCAB)
         set(STRING_BIMAP_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
         set(STRING_BIMAP_BUILD_TESTS OFF CACHE BOOL "" FORCE)
         set(STRING_BIMAP_BUILD_BENCHMARKS OFF CACHE BOOL "" FORCE)
-        add_subdirectory(${SECIDS_STRING_BIMAP_ROOT} ${CMAKE_CURRENT_BINARY_DIR}/string_bimap EXCLUDE_FROM_ALL)
+        set(STRING_BIMAP_BUILD_TOOLS OFF CACHE BOOL "" FORCE)
+        add_subdirectory("${SECIDS_STRING_BIMAP_ROOT}" "${CMAKE_CURRENT_BINARY_DIR}/string_bimap" EXCLUDE_FROM_ALL)
     else()
         find_package(string_bimap CONFIG QUIET)
     endif()
@@ -51,6 +53,13 @@ endif()
 
 if(Python3_Interpreter_FOUND)
     add_custom_target(
+        generate_iso_source_manifest
+        COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_iso_source_manifest.py
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        COMMENT "Generating ISO source provenance manifest"
+    )
+
+    add_custom_target(
         generate_iso3166_country_header
         COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_iso3166_country_header.py
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
@@ -63,6 +72,19 @@ if(Python3_Interpreter_FOUND)
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
         COMMENT "Generating ISO-4217 currency header from vendored CSV"
     )
+endif()
+
+if(SECIDS_BUILD_FUZZERS)
+    if(NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+        message(FATAL_ERROR "SECIDS_BUILD_FUZZERS=ON requires Clang with libFuzzer support")
+    endif()
+
+    foreach(_fuzz_target IN ITEMS identifier_codecs iso_data_loader)
+        add_executable(secids_${_fuzz_target}_fuzz fuzz/${_fuzz_target}_fuzz.cpp)
+        target_link_libraries(secids_${_fuzz_target}_fuzz PRIVATE secids::secids)
+        target_compile_options(secids_${_fuzz_target}_fuzz PRIVATE -fsanitize=fuzzer,address,undefined -fno-omit-frame-pointer)
+        target_link_options(secids_${_fuzz_target}_fuzz PRIVATE -fsanitize=fuzzer,address,undefined)
+    endforeach()
 endif()
 
 if(BASH_EXECUTABLE)
@@ -153,6 +175,7 @@ write_basic_package_version_file(
     COMPATIBILITY SameMajorVersion
 )
 
+set(SECIDS_CONFIG_WITH_OPENFIGI_VOCAB ${SECIDS_WITH_OPENFIGI_VOCAB})
 configure_package_config_file(
     ${CMAKE_CURRENT_SOURCE_DIR}/cmake/secidsConfig.cmake.in
     ${CMAKE_CURRENT_BINARY_DIR}/secidsConfig.cmake
@@ -177,6 +200,12 @@ set(CPACK_GENERATOR "TGZ")
 include(CPack)
 
 if(BUILD_TESTING)
+    if(MSVC)
+        add_compile_options(/UNDEBUG)
+    else()
+        add_compile_options(-UNDEBUG)
+    endif()
+
     add_executable(secids_isin64_test test/isin64_test.cpp)
     target_link_libraries(secids_isin64_test PRIVATE secids::secids)
     add_test(NAME secids_isin64_test COMMAND secids_isin64_test)
@@ -211,7 +240,23 @@ if(BUILD_TESTING)
 
     add_executable(secids_iso_data_loader_test test/iso_data_loader_test.cpp)
     target_link_libraries(secids_iso_data_loader_test PRIVATE secids::secids)
+    target_compile_definitions(secids_iso_data_loader_test PRIVATE SECIDS_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
     add_test(NAME secids_iso_data_loader_test COMMAND secids_iso_data_loader_test)
+
+    add_executable(secids_iso_data_loader_property_test test/iso_data_loader_property_test.cpp)
+    target_link_libraries(secids_iso_data_loader_property_test PRIVATE secids::secids)
+    add_test(NAME secids_iso_data_loader_property_test COMMAND secids_iso_data_loader_property_test)
+
+    if(Python3_Interpreter_FOUND)
+        add_test(
+            NAME secids_iso_source_manifest_test
+            COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/test/iso_source_manifest_test.py
+        )
+        add_test(
+            NAME secids_openfigi_vocab_ids_test
+            COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/test/openfigi_vocab_ids_test.py
+        )
+    endif()
 
     if(TARGET secids_openfigi_vocab)
         add_executable(secids_openfigi_vocab_test test/openfigi_vocab_test.cpp)

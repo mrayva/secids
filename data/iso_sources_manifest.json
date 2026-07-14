@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "sources": [
+    {
+      "dataset": "ISO 3166 countries with regional codes",
+      "path": "data/iso3166/all.csv",
+      "source_url": "https://raw.githubusercontent.com/lukes/ISO-3166-Countries-with-Regional-Codes/master/all/all.csv",
+      "retrieved_at_utc": "2026-07-14T23:05:07Z",
+      "sha256": "347bba35029f804f53780062052499781d267b8a5d887bf3b051e80a68390d6d",
+      "row_count": 249
+    },
+    {
+      "dataset": "ISO 4217 currency codes",
+      "path": "data/iso4217/codes-all.csv",
+      "source_url": "https://raw.githubusercontent.com/datasets/currency-codes/main/data/codes-all.csv",
+      "retrieved_at_utc": "2026-07-14T23:05:07Z",
+      "sha256": "c4b6829a966f0564e77dc6c2d100d268cce61b30f7637bf3d5ec626b0393407f",
+      "row_count": 449
+    },
+    {
+      "dataset": "ISO 4217 currency metadata",
+      "path": "data/iso4217-json/currencies.json",
+      "source_url": "https://raw.githubusercontent.com/ourworldincode/currency/main/currencies.json",
+      "retrieved_at_utc": "2026-07-14T23:05:07Z",
+      "sha256": "b7e0cf152f132b6621d8e51565558717f0bce82b1a899d25cd28b8de74c45833",
+      "row_count": 172
+    }
+  ]
+}

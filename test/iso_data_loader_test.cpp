@@ -12,6 +12,17 @@ void write_file(const std::filesystem::path& path, const char* text) {
     out << text;
 }
 
+void expect_json_error(const std::filesystem::path& path, const char* text) {
+    write_file(path, text);
+    bool threw = false;
+    try {
+        static_cast<void>(secids::runtime::load_iso4217_currency_json(path));
+    } catch (const std::runtime_error&) {
+        threw = true;
+    }
+    assert(threw);
+}
+
 } // namespace
 
 int main() {
@@ -55,14 +66,15 @@ int main() {
         "    \"name\": \"United States Dollar\",\n"
         "    \"demonym\": \"US\",\n"
         "    \"ISOnum\": 840,\n"
-        "    \"symbol\": \"$\",\n"
+        "    \"symbol\": \"\\uD83D\\uDCB0\",\n"
         "    \"symbolNative\": \"$\",\n"
         "    \"majorSingle\": \"Dollar\",\n"
         "    \"majorPlural\": \"Dollars\",\n"
         "    \"minorSingle\": \"Cent\",\n"
         "    \"minorPlural\": \"Cents\",\n"
         "    \"ISOdigits\": 2,\n"
-        "    \"decimals\": 2\n"
+        "    \"decimals\": 2,\n"
+        "    \"ignoredRatio\": 1.25e2\n"
         "  },\n"
         "  \"JPY\": {\n"
         "    \"name\": \"Japanese Yen\",\n"
@@ -84,8 +96,20 @@ int main() {
     assert(currencies_json[0].alphabetic_code == "USD");
     assert(currencies_json[0].numeric_code.has_value() && *currencies_json[0].numeric_code == 840);
     assert(currencies_json[0].minor_unit.has_value() && *currencies_json[0].minor_unit == 2);
+    assert(currencies_json[0].symbol == "\xF0\x9F\x92\xB0");
     assert(currencies_json[1].alphabetic_code == "JPY");
     assert(currencies_json[1].minor_unit.has_value() && *currencies_json[1].minor_unit == 0);
+
+    expect_json_error(tmp / "trailing.json", "{} trailing\n");
+    expect_json_error(tmp / "numeric_overflow.json", "{\"BAD\":{\"ISOnum\":1000}}\n");
+    expect_json_error(tmp / "integer_overflow.json", "{\"BAD\":{\"ISOnum\":999999999999999999999}}\n");
+    expect_json_error(tmp / "bad_surrogate.json", "{\"BAD\":{\"symbol\":\"\\uD83D\"}}\n");
+
+#ifdef SECIDS_SOURCE_DIR
+    const auto vendored_currencies = load_iso4217_currency_json(
+        fs::path(SECIDS_SOURCE_DIR) / "data/iso4217-json/currencies.json");
+    assert(vendored_currencies.size() > 100);
+#endif
 
     fs::remove_all(tmp);
 

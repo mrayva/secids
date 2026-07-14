@@ -1,6 +1,8 @@
 {
   "name": "secids",
   "version-string": "0.1.0",
-  "description": "Header-only C++20 ISIN <-> uint64_t encoder/decoder.",
+  "description": "Header-only C++20 market identifier packing, validation, and ISO reference-data library.",
+  "homepage": "https://github.com/mrayva/secids",
+  "license": "MIT",
   "dependencies": []
 }

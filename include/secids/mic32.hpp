@@ -65,7 +65,7 @@ constexpr std::optional<decoded_type> unpack_mic32(value_type value) noexcept {
     }
 
     for (char c : out) {
-        if (!detail::is_mic_char(c)) {
+        if (!detail::is_upper_alpha(c) && !detail::is_digit(c)) {
             return std::nullopt;
         }
     }

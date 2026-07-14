@@ -303,6 +303,28 @@ cmake --build build --target update_iso_sources
 Additional vendored runtime source after refresh:
 - `data/iso4217-json/currencies.json`
 
+Source provenance is recorded in `data/iso_sources_manifest.json`, including the upstream URL, UTC retrieval time, SHA-256 digest, and source row count. Regenerate it without fetching via:
+
+```bash
+python3 tools/generate_iso_source_manifest.py
+cmake --build build --target generate_iso_source_manifest
+```
+
+## Fuzzing
+
+Clang/libFuzzer harnesses cover all identifier codecs and the runtime ISO loaders:
+
+```bash
+CXX=clang++ cmake -S . -B build-fuzz \
+  -DSECIDS_BUILD_FUZZERS=ON \
+  -DBUILD_TESTING=OFF
+cmake --build build-fuzz
+./build-fuzz/secids_identifier_codecs_fuzz -max_len=64
+./build-fuzz/secids_iso_data_loader_fuzz -max_len=4096
+```
+
+Normal CTest runs also include deterministic round-trip and malformed-input property tests.
+
 ## OpenFIGI Vocab Scaffold
 
 Optional module headers:
@@ -322,13 +344,12 @@ Enable the module with a local `string_bimap` checkout:
 ```bash
 cmake -S . -B build-openfigi \
   -DSECIDS_WITH_OPENFIGI_VOCAB=ON \
-  -DSECIDS_STRING_BIMAP_ROOT=/tmp/string_bimap_inspect
+  -DSECIDS_STRING_BIMAP_ROOT=/path/to/string_bimap
 cmake --build build-openfigi
 ctest --test-dir build-openfigi --output-on-failure
 ```
 
-Runtime snapshot functionality requires a `string_bimap` build with `PthashBimap` available.
-If the checkout is present but pthash support is not enabled, the scaffold still builds, but snapshot-building calls will report unavailable/skip.
+Runtime snapshots use the always-available `string_bimap::StringBimap`; optional PTHash support is not required.
 
 Fetch raw OpenFIGI value domains:
 
@@ -347,11 +368,14 @@ CLI examples:
 ```
 
 Current scaffold scope:
-- raw JSON-array fetch
+- OpenFIGI `{"values":[...]}` and raw JSON-array input
 - deterministic normalization and dedupe through `vocab_snapshot`
-- persisted `string_bimap::PthashBimap` snapshots
+- persisted `string_bimap::StringBimap` snapshots
 - directory-based snapshot registry
 - generated ID-header tool for small fixed domains
+
+Snapshot IDs follow sorted value order. Adding a value can renumber later entries, so regenerate ID headers and snapshots together when upstream data changes.
+Snapshots created by earlier PTHash-backed scaffold revisions must also be rebuilt; manifest version 2 identifies the `StringBimap` format.
 
 Packing opportunities from the CSV:
 - `AlphabeticCode`: fits in `uint16_t`

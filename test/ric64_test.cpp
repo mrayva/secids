@@ -97,6 +97,7 @@ int main() {
 
     assert(encode_ric("ibm.n").has_value());
     assert(encode_ric(".dji").has_value());
+    assert(!decode_ric(10).has_value());
 
     std::mt19937_64 rng(0xA1C64ULL);
     for (int i = 0; i < 10000; ++i) {

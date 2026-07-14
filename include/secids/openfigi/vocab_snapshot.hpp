@@ -12,8 +12,8 @@
 
 #include "secids/openfigi/vocab_types.hpp"
 
-#if __has_include("string_bimap/pthash_bimap.hpp")
-#include "string_bimap/pthash_bimap.hpp"
+#if __has_include("string_bimap/string_bimap.hpp")
+#include "string_bimap/string_bimap.hpp"
 #define SECIDS_OPENFIGI_VOCAB_HAS_STRING_BIMAP 1
 #else
 #define SECIDS_OPENFIGI_VOCAB_HAS_STRING_BIMAP 0
@@ -60,7 +60,7 @@ public:
 
     static constexpr bool available() noexcept {
 #if SECIDS_OPENFIGI_VOCAB_HAS_STRING_BIMAP
-        return string_bimap::PthashBimap::available();
+        return true;
 #else
         return false;
 #endif
@@ -77,7 +77,7 @@ public:
         vocab_snapshot snapshot;
         snapshot.domain_ = domain;
 #if SECIDS_OPENFIGI_VOCAB_HAS_STRING_BIMAP
-        snapshot.bimap_ = string_bimap::PthashBimap::load(path.string());
+        snapshot.bimap_ = string_bimap::StringBimap::load(path.string());
         return snapshot;
 #else
         (void)path;
@@ -88,7 +88,12 @@ public:
     void rebuild(const std::vector<std::string>& values) {
 #if SECIDS_OPENFIGI_VOCAB_HAS_STRING_BIMAP
         const auto normalized = detail::normalize_vocab_values(values);
-        bimap_.rebuild(normalized);
+        string_bimap::StringBimap next;
+        for (const auto& value : normalized) {
+            (void)next.insert(value);
+        }
+        next.compact();
+        bimap_ = std::move(next);
 #else
         (void)values;
         throw std::logic_error("secids::openfigi::vocab_snapshot requires string_bimap");
@@ -97,7 +102,7 @@ public:
 
     void save(const std::filesystem::path& path) const {
 #if SECIDS_OPENFIGI_VOCAB_HAS_STRING_BIMAP
-        bimap_.save(path.string());
+        bimap_.save_compacted(path.string());
 #else
         (void)path;
         throw std::logic_error("secids::openfigi::vocab_snapshot requires string_bimap");
@@ -110,7 +115,7 @@ public:
 
     [[nodiscard]] std::size_t size() const noexcept {
 #if SECIDS_OPENFIGI_VOCAB_HAS_STRING_BIMAP
-        return bimap_.size();
+        return bimap_.live_size();
 #else
         return 0;
 #endif
@@ -122,7 +127,7 @@ public:
 
     [[nodiscard]] std::optional<id_type> find_id(std::string_view value) const noexcept {
 #if SECIDS_OPENFIGI_VOCAB_HAS_STRING_BIMAP
-        return bimap_.find_as<id_type>(value);
+        return bimap_.find_id(value);
 #else
         (void)value;
         return std::nullopt;
@@ -135,7 +140,7 @@ public:
 
     [[nodiscard]] std::string_view find_value(id_type id) const noexcept {
 #if SECIDS_OPENFIGI_VOCAB_HAS_STRING_BIMAP
-        return bimap_.by_id(id);
+        return bimap_.get_string(id);
 #else
         (void)id;
         return {};
@@ -145,7 +150,7 @@ public:
 private:
     vocab_domain domain_ = vocab_domain::mic_code;
 #if SECIDS_OPENFIGI_VOCAB_HAS_STRING_BIMAP
-    string_bimap::PthashBimap bimap_;
+    string_bimap::StringBimap bimap_;
 #endif
 };
 

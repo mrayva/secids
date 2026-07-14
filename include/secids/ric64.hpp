@@ -213,8 +213,14 @@ constexpr std::optional<decoded_ric> decode_ric(value_type value) noexcept {
         if (tmp != 0) {
             return std::nullopt;
         }
+        const std::size_t body_len = static_cast<std::size_t>(len_code + 1);
+        for (std::size_t i = body_len; i < 4; ++i) {
+            if (slots[i] != 0) {
+                return std::nullopt;
+            }
+        }
         out.kind = ric_kind::index;
-        out.length = static_cast<std::uint8_t>(1 + (len_code + 1));
+        out.length = static_cast<std::uint8_t>(1 + body_len);
         out.chars[0] = '.';
         for (std::size_t i = 0; i < 4; ++i) {
             out.chars[1 + i] = detail::decode_alnum(slots[i]);
@@ -237,6 +243,16 @@ constexpr std::optional<decoded_ric> decode_ric(value_type value) noexcept {
 
     const std::size_t root_len = static_cast<std::size_t>(root_len_code + 1);
     const std::size_t suffix_len = static_cast<std::size_t>(suffix_len_code + 1);
+    for (std::size_t i = root_len; i < 4; ++i) {
+        if (slots[i] != 0) {
+            return std::nullopt;
+        }
+    }
+    for (std::size_t i = suffix_len; i < 2; ++i) {
+        if (slots[4 + i] != 0) {
+            return std::nullopt;
+        }
+    }
     out.kind = ric_kind::equity;
     out.length = static_cast<std::uint8_t>(root_len + 1 + suffix_len);
     for (std::size_t i = 0; i < root_len; ++i) {

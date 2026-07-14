@@ -15,6 +15,7 @@ int main() {
     static_assert(pack_alphabetic_code("usd").has_value());
     static_assert(!pack_alphabetic_code("US1").has_value());
     static_assert(!pack_alphabetic_code("US").has_value());
+    assert(unpack_alphabetic_code(26U * 26U * 26U).empty());
 
     const auto* usd = find_by_alphabetic_code("USD");
     assert(usd != nullptr);
@@ -59,6 +60,7 @@ int main() {
     assert(find_by_numeric_code(1000) == nullptr);
     assert(format_numeric_code(8) == "008");
     assert(format_numeric_code(missing_code).empty());
+    assert(format_numeric_code(1000).empty());
     assert(minor_unit_to_string(missing_minor_unit).empty());
 
     std::size_t x_prefix_count = 0;

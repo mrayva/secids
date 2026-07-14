@@ -1,4 +1,5 @@
 /build/
+/build-*/
 /_CPack_Packages/
 /*.tar.gz
 /.cache/

@@ -57,6 +57,7 @@ int main() {
     }
 
     assert(!unpack_mic32(0U).has_value());
+    assert(!unpack_mic32(0x45775277U).has_value());
 
     std::mt19937_64 rng(0xB16C320ULL);
     for (int i = 0; i < 10000; ++i) {

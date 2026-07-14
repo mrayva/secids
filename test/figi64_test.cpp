@@ -82,6 +82,7 @@ int main() {
     assert(!encode_valid_figi("BBG000BLNNV1").has_value());
     assert(!is_valid_figi("BBG000BLNNV1"));
     assert(!decode_figi(secids::figi64::max_value + 1).has_value());
+    assert(!decode_figi(0x4B663DB7B6FEULL).has_value());
 
     std::mt19937_64 rng(0xF16164ULL);
     for (int i = 0; i < 10000; ++i) {

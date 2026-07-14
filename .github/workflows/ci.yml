@@ -20,7 +20,7 @@ jobs:
     env:
       CXX: ${{ matrix.cxx }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Configure
         run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
@@ -62,3 +62,79 @@ jobs:
           cmake -S "$RUNNER_TEMP/secids-consumer" -B "$RUNNER_TEMP/secids-consumer/build" -DCMAKE_PREFIX_PATH="$RUNNER_TEMP/secids-install"
           cmake --build "$RUNNER_TEMP/secids-consumer/build"
           "$RUNNER_TEMP/secids-consumer/build/secids_consumer"
+
+  openfigi-vocab:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Checkout string_bimap
+        uses: actions/checkout@v6
+        with:
+          repository: mrayva/string_bimap
+          ref: 26207540b204b7c124627922d08bfd579a0ef958
+          path: string_bimap
+
+      - name: Configure
+        run: >-
+          cmake -S . -B build-openfigi
+          -DCMAKE_BUILD_TYPE=Release
+          -DSECIDS_WITH_OPENFIGI_VOCAB=ON
+          -DSECIDS_STRING_BIMAP_ROOT="$GITHUB_WORKSPACE/string_bimap"
+
+      - name: Build
+        run: cmake --build build-openfigi --config Release
+
+      - name: Test
+        run: ctest --test-dir build-openfigi --output-on-failure -C Release
+
+      - name: Install packages
+        run: |
+          cmake -S string_bimap -B string_bimap-install \
+            -DSTRING_BIMAP_BUILD_EXAMPLES=OFF \
+            -DSTRING_BIMAP_BUILD_TOOLS=OFF \
+            -DSTRING_BIMAP_BUILD_TESTS=OFF \
+            -DSTRING_BIMAP_BUILD_BENCHMARKS=OFF
+          cmake --install string_bimap-install --prefix "$RUNNER_TEMP/secids-openfigi-install"
+          cmake --install build-openfigi --prefix "$RUNNER_TEMP/secids-openfigi-install"
+
+      - name: Consume OpenFIGI package
+        shell: bash
+        run: |
+          mkdir -p "$RUNNER_TEMP/secids-openfigi-consumer"
+          cat > "$RUNNER_TEMP/secids-openfigi-consumer/CMakeLists.txt" <<'CMAKE'
+          cmake_minimum_required(VERSION 3.20)
+          project(secids_openfigi_consumer LANGUAGES CXX)
+          find_package(secids CONFIG REQUIRED)
+          add_executable(secids_openfigi_consumer main.cpp)
+          target_link_libraries(secids_openfigi_consumer PRIVATE secids::openfigi_vocab)
+          CMAKE
+          cat > "$RUNNER_TEMP/secids-openfigi-consumer/main.cpp" <<'CPP'
+          #include "secids/openfigi/vocab_snapshot.hpp"
+          int main() {
+              return secids::openfigi::vocab_snapshot::available() ? 0 : 1;
+          }
+          CPP
+          cmake -S "$RUNNER_TEMP/secids-openfigi-consumer" \
+            -B "$RUNNER_TEMP/secids-openfigi-consumer/build" \
+            -DCMAKE_PREFIX_PATH="$RUNNER_TEMP/secids-openfigi-install"
+          cmake --build "$RUNNER_TEMP/secids-openfigi-consumer/build"
+          "$RUNNER_TEMP/secids-openfigi-consumer/build/secids_openfigi_consumer"
+
+  fuzz-smoke:
+    runs-on: ubuntu-latest
+    env:
+      CXX: clang++
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Configure fuzzers
+        run: cmake -S . -B build-fuzz -DSECIDS_BUILD_FUZZERS=ON -DBUILD_TESTING=OFF
+
+      - name: Build fuzzers
+        run: cmake --build build-fuzz
+
+      - name: Smoke test fuzzers
+        run: |
+          ./build-fuzz/secids_identifier_codecs_fuzz -runs=1000 -max_len=64
+          ./build-fuzz/secids_iso_data_loader_fuzz -runs=1000 -max_len=4096

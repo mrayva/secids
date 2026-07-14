@@ -18,7 +18,7 @@ constexpr char to_upper_ascii(char c) noexcept {
 
 template <std::size_t Length>
 constexpr std::optional<std::uint16_t> pack(std::string_view code) noexcept {
-    static_assert(Length > 0);
+    static_assert(Length > 0 && Length <= 3);
     if (code.size() != Length) {
         return std::nullopt;
     }
@@ -36,7 +36,15 @@ constexpr std::optional<std::uint16_t> pack(std::string_view code) noexcept {
 
 template <std::size_t Length>
 inline std::string unpack(std::uint16_t value) {
-    static_assert(Length > 0);
+    static_assert(Length > 0 && Length <= 3);
+    std::uint32_t cardinality = 1;
+    for (std::size_t i = 0; i < Length; ++i) {
+        cardinality *= 26U;
+    }
+    if (value >= cardinality) {
+        return {};
+    }
+
     std::string out(Length, '\0');
     for (std::size_t i = Length; i > 0; --i) {
         out[i - 1] = static_cast<char>('A' + (value % 26U));

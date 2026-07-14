@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
+#include <limits>
 #include <optional>
 #include <stdexcept>
 #include <string>
@@ -172,6 +173,10 @@ inline std::vector<std::vector<std::string>> parse_csv_rows(const std::filesyste
 }
 
 inline void append_utf8(std::string& out, std::uint32_t code_point) {
+    if (code_point > 0x10FFFFU || (code_point >= 0xD800U && code_point <= 0xDFFFU)) {
+        throw std::runtime_error("invalid JSON Unicode code point");
+    }
+
     if (code_point <= 0x7FU) {
         out.push_back(static_cast<char>(code_point));
     } else if (code_point <= 0x7FFU) {
@@ -246,22 +251,19 @@ public:
                     case 'r': out.push_back('\r'); break;
                     case 't': out.push_back('\t'); break;
                     case 'u': {
-                        if (pos_ + 4 > input_.size()) {
-                            throw std::runtime_error("invalid JSON unicode escape");
-                        }
-                        std::uint32_t code_point = 0;
-                        for (int i = 0; i < 4; ++i) {
-                            const char hex = input_[pos_++];
-                            code_point <<= 4U;
-                            if (hex >= '0' && hex <= '9') {
-                                code_point |= static_cast<std::uint32_t>(hex - '0');
-                            } else if (hex >= 'A' && hex <= 'F') {
-                                code_point |= static_cast<std::uint32_t>(hex - 'A' + 10);
-                            } else if (hex >= 'a' && hex <= 'f') {
-                                code_point |= static_cast<std::uint32_t>(hex - 'a' + 10);
-                            } else {
-                                throw std::runtime_error("invalid JSON unicode escape");
+                        std::uint32_t code_point = parse_hex_quad();
+                        if (code_point >= 0xD800U && code_point <= 0xDBFFU) {
+                            if (pos_ + 2 > input_.size() || input_[pos_] != '\\' || input_[pos_ + 1] != 'u') {
+                                throw std::runtime_error("missing low surrogate in JSON unicode escape");
                             }
+                            pos_ += 2;
+                            const std::uint32_t low = parse_hex_quad();
+                            if (low < 0xDC00U || low > 0xDFFFU) {
+                                throw std::runtime_error("invalid low surrogate in JSON unicode escape");
+                            }
+                            code_point = 0x10000U + ((code_point - 0xD800U) << 10U) + (low - 0xDC00U);
+                        } else if (code_point >= 0xDC00U && code_point <= 0xDFFFU) {
+                            throw std::runtime_error("unexpected low surrogate in JSON unicode escape");
                         }
                         append_utf8(out, code_point);
                         break;
@@ -269,6 +271,8 @@ public:
                     default:
                         throw std::runtime_error("invalid JSON escape");
                 }
+            } else if (static_cast<unsigned char>(ch) < 0x20U) {
+                throw std::runtime_error("unescaped control character in JSON string");
             } else {
                 out.push_back(ch);
             }
@@ -292,13 +296,62 @@ public:
             throw std::runtime_error("expected JSON integer");
         }
 
-        std::int64_t value = 0;
+        std::uint64_t value = 0;
+        const std::uint64_t limit = negative
+            ? static_cast<std::uint64_t>(std::numeric_limits<std::int64_t>::max()) + 1U
+            : static_cast<std::uint64_t>(std::numeric_limits<std::int64_t>::max());
         while (pos_ < input_.size() && std::isdigit(static_cast<unsigned char>(input_[pos_]))) {
-            value = value * 10 + (input_[pos_] - '0');
+            const auto digit = static_cast<std::uint64_t>(input_[pos_] - '0');
+            if (value > (limit - digit) / 10U) {
+                throw std::runtime_error("JSON integer out of range");
+            }
+            value = value * 10U + digit;
             ++pos_;
         }
 
-        return negative ? -value : value;
+        if (negative && value == limit) {
+            return std::numeric_limits<std::int64_t>::min();
+        }
+        const auto signed_value = static_cast<std::int64_t>(value);
+        return negative ? -signed_value : signed_value;
+    }
+
+    void skip_number() {
+        skip_ws();
+        if (pos_ < input_.size() && input_[pos_] == '-') {
+            ++pos_;
+        }
+        if (pos_ >= input_.size() || !std::isdigit(static_cast<unsigned char>(input_[pos_]))) {
+            throw std::runtime_error("expected JSON number");
+        }
+        if (input_[pos_] == '0') {
+            ++pos_;
+        } else {
+            while (pos_ < input_.size() && std::isdigit(static_cast<unsigned char>(input_[pos_]))) {
+                ++pos_;
+            }
+        }
+        if (pos_ < input_.size() && input_[pos_] == '.') {
+            ++pos_;
+            if (pos_ >= input_.size() || !std::isdigit(static_cast<unsigned char>(input_[pos_]))) {
+                throw std::runtime_error("invalid JSON fractional number");
+            }
+            while (pos_ < input_.size() && std::isdigit(static_cast<unsigned char>(input_[pos_]))) {
+                ++pos_;
+            }
+        }
+        if (pos_ < input_.size() && (input_[pos_] == 'e' || input_[pos_] == 'E')) {
+            ++pos_;
+            if (pos_ < input_.size() && (input_[pos_] == '+' || input_[pos_] == '-')) {
+                ++pos_;
+            }
+            if (pos_ >= input_.size() || !std::isdigit(static_cast<unsigned char>(input_[pos_]))) {
+                throw std::runtime_error("invalid JSON exponent");
+            }
+            while (pos_ < input_.size() && std::isdigit(static_cast<unsigned char>(input_[pos_]))) {
+                ++pos_;
+            }
+        }
     }
 
     void skip_value() {
@@ -336,7 +389,7 @@ public:
         }
 
         if (std::isdigit(static_cast<unsigned char>(ch)) || ch == '-') {
-            parse_nullable_integer();
+            skip_number();
             return;
         }
 
@@ -347,7 +400,33 @@ public:
         throw std::runtime_error("unsupported JSON value");
     }
 
+    bool at_end() {
+        skip_ws();
+        return pos_ == input_.size();
+    }
+
 private:
+    std::uint32_t parse_hex_quad() {
+        if (pos_ + 4 > input_.size()) {
+            throw std::runtime_error("invalid JSON unicode escape");
+        }
+        std::uint32_t code_point = 0;
+        for (int i = 0; i < 4; ++i) {
+            const char hex = input_[pos_++];
+            code_point <<= 4U;
+            if (hex >= '0' && hex <= '9') {
+                code_point |= static_cast<std::uint32_t>(hex - '0');
+            } else if (hex >= 'A' && hex <= 'F') {
+                code_point |= static_cast<std::uint32_t>(hex - 'A' + 10);
+            } else if (hex >= 'a' && hex <= 'f') {
+                code_point |= static_cast<std::uint32_t>(hex - 'a' + 10);
+            } else {
+                throw std::runtime_error("invalid JSON unicode escape");
+            }
+        }
+        return code_point;
+    }
+
     bool match_literal(const char* literal) {
         const std::size_t start = pos_;
         while (*literal != '\0') {
@@ -468,6 +547,9 @@ inline std::vector<iso4217_currency_json_row> load_iso4217_currency_json(const s
 
     reader.expect('{');
     if (reader.consume('}')) {
+        if (!reader.at_end()) {
+            throw std::runtime_error("unexpected trailing JSON content");
+        }
         return out;
     }
 
@@ -506,13 +588,17 @@ inline std::vector<iso4217_currency_json_row> load_iso4217_currency_json(const s
                 row.minor_plural = reader.parse_string();
             } else if (key == "ISOnum") {
                 const auto value = reader.parse_nullable_integer();
-                if (value) {
+                if (value && *value >= 0 && *value <= 999) {
                     row.numeric_code = static_cast<std::uint16_t>(*value);
+                } else if (value) {
+                    throw std::runtime_error("ISO-4217 numeric code out of range");
                 }
             } else if (key == "ISOdigits" || key == "decimals") {
                 const auto value = reader.parse_nullable_integer();
                 if (value && *value >= 0 && *value <= 255) {
                     row.minor_unit = static_cast<std::uint8_t>(*value);
+                } else if (value) {
+                    throw std::runtime_error("ISO-4217 minor unit out of range");
                 }
             } else {
                 reader.skip_value();
@@ -523,6 +609,9 @@ inline std::vector<iso4217_currency_json_row> load_iso4217_currency_json(const s
     } while (reader.consume(','));
 
     reader.expect('}');
+    if (!reader.at_end()) {
+        throw std::runtime_error("unexpected trailing JSON content");
+    }
     return out;
 }
 
