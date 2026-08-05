@@ -1,4 +1,5 @@
-#include <iostream>
+#include <optional>
+#include <string>
 #include <string_view>
 
 #include "secids/detail/cli_support.hpp"
@@ -6,86 +7,22 @@
 
 namespace {
 
-void print_usage(const char* argv0) {
-    std::cerr
-        << "Usage:\n"
-        << "  " << argv0 << " encode <FIGI>\n"
-        << "  " << argv0 << " encode-strict <FIGI>\n"
-        << "  " << argv0 << " decode <UINT64>\n"
-        << "  " << argv0 << " check <FIGI>\n"
-        << "  " << argv0 << " check-digit <11-char-prefix>\n";
-}
+struct figi_cli_traits {
+    static constexpr const char* name = "FIGI";
+    static constexpr int prefix_len = 11;
+    using value_type = secids::figi64::value_type;
+
+    static std::optional<value_type> encode(std::string_view s) { return secids::figi64::encode_figi(s); }
+    static std::optional<value_type> encode_valid(std::string_view s) { return secids::figi64::encode_valid_figi(s); }
+    static std::optional<secids::figi64::decoded_type> decode(value_type v) { return secids::figi64::decode_figi(v); }
+    static bool is_valid_format(std::string_view s) { return secids::figi64::is_valid_figi_format(s); }
+    static bool has_valid_check_digit(std::string_view s) { return secids::figi64::has_valid_check_digit(s); }
+    static std::optional<int> calculate_check_digit(std::string_view s) { return secids::figi64::calculate_check_digit(s); }
+    static std::string to_string(const secids::figi64::decoded_type& d) { return secids::figi64::to_string(d); }
+};
 
 } // namespace
 
 int main(int argc, char** argv) {
-    if (argc != 3) {
-        print_usage(argv[0]);
-        return 2;
-    }
-
-    const std::string_view command = argv[1];
-    const std::string_view argument = argv[2];
-
-    if (command == "encode") {
-        const auto encoded = secids::figi64::encode_figi(argument);
-        if (!encoded) {
-            std::cerr << "invalid FIGI format\n";
-            return 1;
-        }
-        std::cout << *encoded << '\n';
-        return 0;
-    }
-
-    if (command == "encode-strict") {
-        const auto encoded = secids::figi64::encode_valid_figi(argument);
-        if (!encoded) {
-            std::cerr << "invalid FIGI or check digit\n";
-            return 1;
-        }
-        std::cout << *encoded << '\n';
-        return 0;
-    }
-
-    if (command == "decode") {
-        const auto value = secids::detail::parse_u64<secids::figi64::value_type>(argument);
-        if (!value) {
-            std::cerr << "invalid uint64 value\n";
-            return 1;
-        }
-        const auto decoded = secids::figi64::decode_figi(*value);
-        if (!decoded) {
-            std::cerr << "encoded value out of range\n";
-            return 1;
-        }
-        std::cout << secids::figi64::to_string(*decoded) << '\n';
-        return 0;
-    }
-
-    if (command == "check") {
-        if (!secids::figi64::is_valid_figi_format(argument)) {
-            std::cout << "format: invalid\n";
-            std::cout << "check_digit: invalid\n";
-            return 1;
-        }
-
-        std::cout << "format: valid\n";
-        std::cout << "check_digit: "
-                  << (secids::figi64::has_valid_check_digit(argument) ? "valid" : "invalid")
-                  << '\n';
-        return secids::figi64::has_valid_check_digit(argument) ? 0 : 1;
-    }
-
-    if (command == "check-digit") {
-        const auto check_digit = secids::figi64::calculate_check_digit(argument);
-        if (!check_digit) {
-            std::cerr << "invalid 11-character FIGI prefix\n";
-            return 1;
-        }
-        std::cout << *check_digit << '\n';
-        return 0;
-    }
-
-    print_usage(argv[0]);
-    return 2;
+    return secids::detail::run_identifier_cli<figi_cli_traits>(argc, argv);
 }

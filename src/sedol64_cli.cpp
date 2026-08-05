@@ -1,4 +1,5 @@
-#include <iostream>
+#include <optional>
+#include <string>
 #include <string_view>
 
 #include "secids/detail/cli_support.hpp"
@@ -6,86 +7,22 @@
 
 namespace {
 
-void print_usage(const char* argv0) {
-    std::cerr
-        << "Usage:\n"
-        << "  " << argv0 << " encode <SEDOL>\n"
-        << "  " << argv0 << " encode-strict <SEDOL>\n"
-        << "  " << argv0 << " decode <UINT64>\n"
-        << "  " << argv0 << " check <SEDOL>\n"
-        << "  " << argv0 << " check-digit <6-char-prefix>\n";
-}
+struct sedol_cli_traits {
+    static constexpr const char* name = "SEDOL";
+    static constexpr int prefix_len = 6;
+    using value_type = secids::sedol64::value_type;
+
+    static std::optional<value_type> encode(std::string_view s) { return secids::sedol64::encode_sedol(s); }
+    static std::optional<value_type> encode_valid(std::string_view s) { return secids::sedol64::encode_valid_sedol(s); }
+    static std::optional<secids::sedol64::decoded_type> decode(value_type v) { return secids::sedol64::decode_sedol(v); }
+    static bool is_valid_format(std::string_view s) { return secids::sedol64::is_valid_sedol_format(s); }
+    static bool has_valid_check_digit(std::string_view s) { return secids::sedol64::has_valid_check_digit(s); }
+    static std::optional<int> calculate_check_digit(std::string_view s) { return secids::sedol64::calculate_check_digit(s); }
+    static std::string to_string(const secids::sedol64::decoded_type& d) { return secids::sedol64::to_string(d); }
+};
 
 } // namespace
 
 int main(int argc, char** argv) {
-    if (argc != 3) {
-        print_usage(argv[0]);
-        return 2;
-    }
-
-    const std::string_view command = argv[1];
-    const std::string_view argument = argv[2];
-
-    if (command == "encode") {
-        const auto encoded = secids::sedol64::encode_sedol(argument);
-        if (!encoded) {
-            std::cerr << "invalid SEDOL format\n";
-            return 1;
-        }
-        std::cout << *encoded << '\n';
-        return 0;
-    }
-
-    if (command == "encode-strict") {
-        const auto encoded = secids::sedol64::encode_valid_sedol(argument);
-        if (!encoded) {
-            std::cerr << "invalid SEDOL or check digit\n";
-            return 1;
-        }
-        std::cout << *encoded << '\n';
-        return 0;
-    }
-
-    if (command == "decode") {
-        const auto value = secids::detail::parse_u64<secids::sedol64::value_type>(argument);
-        if (!value) {
-            std::cerr << "invalid uint64 value\n";
-            return 1;
-        }
-        const auto decoded = secids::sedol64::decode_sedol(*value);
-        if (!decoded) {
-            std::cerr << "encoded value out of range\n";
-            return 1;
-        }
-        std::cout << secids::sedol64::to_string(*decoded) << '\n';
-        return 0;
-    }
-
-    if (command == "check") {
-        if (!secids::sedol64::is_valid_sedol_format(argument)) {
-            std::cout << "format: invalid\n";
-            std::cout << "check_digit: invalid\n";
-            return 1;
-        }
-
-        std::cout << "format: valid\n";
-        std::cout << "check_digit: "
-                  << (secids::sedol64::has_valid_check_digit(argument) ? "valid" : "invalid")
-                  << '\n';
-        return secids::sedol64::has_valid_check_digit(argument) ? 0 : 1;
-    }
-
-    if (command == "check-digit") {
-        const auto check_digit = secids::sedol64::calculate_check_digit(argument);
-        if (!check_digit) {
-            std::cerr << "invalid 6-character SEDOL prefix\n";
-            return 1;
-        }
-        std::cout << *check_digit << '\n';
-        return 0;
-    }
-
-    print_usage(argv[0]);
-    return 2;
+    return secids::detail::run_identifier_cli<sedol_cli_traits>(argc, argv);
 }

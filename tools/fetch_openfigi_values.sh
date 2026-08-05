@@ -15,7 +15,7 @@ domains=(
 )
 
 for domain in "${domains[@]}"; do
-  curl -L "https://api.openfigi.com/v3/mapping/values/${domain}" \
+  curl -fL "https://api.openfigi.com/v3/mapping/values/${domain}" \
     -o "${OUT_DIR}/${domain}.json"
 done
 

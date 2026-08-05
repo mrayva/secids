@@ -1,4 +1,5 @@
-#include <iostream>
+#include <optional>
+#include <string>
 #include <string_view>
 
 #include "secids/detail/cli_support.hpp"
@@ -6,86 +7,22 @@
 
 namespace {
 
-void print_usage(const char* argv0) {
-    std::cerr
-        << "Usage:\n"
-        << "  " << argv0 << " encode <CUSIP>\n"
-        << "  " << argv0 << " encode-strict <CUSIP>\n"
-        << "  " << argv0 << " decode <UINT64>\n"
-        << "  " << argv0 << " check <CUSIP>\n"
-        << "  " << argv0 << " check-digit <8-char-prefix>\n";
-}
+struct cusip_cli_traits {
+    static constexpr const char* name = "CUSIP";
+    static constexpr int prefix_len = 8;
+    using value_type = secids::cusip64::value_type;
+
+    static std::optional<value_type> encode(std::string_view s) { return secids::cusip64::encode_cusip(s); }
+    static std::optional<value_type> encode_valid(std::string_view s) { return secids::cusip64::encode_valid_cusip(s); }
+    static std::optional<secids::cusip64::decoded_type> decode(value_type v) { return secids::cusip64::decode_cusip(v); }
+    static bool is_valid_format(std::string_view s) { return secids::cusip64::is_valid_cusip_format(s); }
+    static bool has_valid_check_digit(std::string_view s) { return secids::cusip64::has_valid_check_digit(s); }
+    static std::optional<int> calculate_check_digit(std::string_view s) { return secids::cusip64::calculate_check_digit(s); }
+    static std::string to_string(const secids::cusip64::decoded_type& d) { return secids::cusip64::to_string(d); }
+};
 
 } // namespace
 
 int main(int argc, char** argv) {
-    if (argc != 3) {
-        print_usage(argv[0]);
-        return 2;
-    }
-
-    const std::string_view command = argv[1];
-    const std::string_view argument = argv[2];
-
-    if (command == "encode") {
-        const auto encoded = secids::cusip64::encode_cusip(argument);
-        if (!encoded) {
-            std::cerr << "invalid CUSIP format\n";
-            return 1;
-        }
-        std::cout << *encoded << '\n';
-        return 0;
-    }
-
-    if (command == "encode-strict") {
-        const auto encoded = secids::cusip64::encode_valid_cusip(argument);
-        if (!encoded) {
-            std::cerr << "invalid CUSIP or check digit\n";
-            return 1;
-        }
-        std::cout << *encoded << '\n';
-        return 0;
-    }
-
-    if (command == "decode") {
-        const auto value = secids::detail::parse_u64<secids::cusip64::value_type>(argument);
-        if (!value) {
-            std::cerr << "invalid uint64 value\n";
-            return 1;
-        }
-        const auto decoded = secids::cusip64::decode_cusip(*value);
-        if (!decoded) {
-            std::cerr << "encoded value out of range\n";
-            return 1;
-        }
-        std::cout << secids::cusip64::to_string(*decoded) << '\n';
-        return 0;
-    }
-
-    if (command == "check") {
-        if (!secids::cusip64::is_valid_cusip_format(argument)) {
-            std::cout << "format: invalid\n";
-            std::cout << "check_digit: invalid\n";
-            return 1;
-        }
-
-        std::cout << "format: valid\n";
-        std::cout << "check_digit: "
-                  << (secids::cusip64::has_valid_check_digit(argument) ? "valid" : "invalid")
-                  << '\n';
-        return secids::cusip64::has_valid_check_digit(argument) ? 0 : 1;
-    }
-
-    if (command == "check-digit") {
-        const auto check_digit = secids::cusip64::calculate_check_digit(argument);
-        if (!check_digit) {
-            std::cerr << "invalid 8-character CUSIP prefix\n";
-            return 1;
-        }
-        std::cout << *check_digit << '\n';
-        return 0;
-    }
-
-    print_usage(argv[0]);
-    return 2;
+    return secids::detail::run_identifier_cli<cusip_cli_traits>(argc, argv);
 }

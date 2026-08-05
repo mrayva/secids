@@ -1,4 +1,5 @@
-#include <iostream>
+#include <optional>
+#include <string>
 #include <string_view>
 
 #include "secids/detail/cli_support.hpp"
@@ -6,86 +7,22 @@
 
 namespace {
 
-void print_usage(const char* argv0) {
-    std::cerr
-        << "Usage:\n"
-        << "  " << argv0 << " encode <ISIN>\n"
-        << "  " << argv0 << " encode-strict <ISIN>\n"
-        << "  " << argv0 << " decode <UINT64>\n"
-        << "  " << argv0 << " check <ISIN>\n"
-        << "  " << argv0 << " check-digit <11-char-prefix>\n";
-}
+struct isin_cli_traits {
+    static constexpr const char* name = "ISIN";
+    static constexpr int prefix_len = 11;
+    using value_type = secids::isin64::value_type;
+
+    static std::optional<value_type> encode(std::string_view s) { return secids::isin64::encode_isin(s); }
+    static std::optional<value_type> encode_valid(std::string_view s) { return secids::isin64::encode_valid_isin(s); }
+    static std::optional<secids::isin64::decoded_type> decode(value_type v) { return secids::isin64::decode_isin(v); }
+    static bool is_valid_format(std::string_view s) { return secids::isin64::is_valid_isin_format(s); }
+    static bool has_valid_check_digit(std::string_view s) { return secids::isin64::has_valid_check_digit(s); }
+    static std::optional<int> calculate_check_digit(std::string_view s) { return secids::isin64::calculate_check_digit(s); }
+    static std::string to_string(const secids::isin64::decoded_type& d) { return secids::isin64::to_string(d); }
+};
 
 } // namespace
 
 int main(int argc, char** argv) {
-    if (argc != 3) {
-        print_usage(argv[0]);
-        return 2;
-    }
-
-    const std::string_view command = argv[1];
-    const std::string_view argument = argv[2];
-
-    if (command == "encode") {
-        const auto encoded = secids::isin64::encode_isin(argument);
-        if (!encoded) {
-            std::cerr << "invalid ISIN format\n";
-            return 1;
-        }
-        std::cout << *encoded << '\n';
-        return 0;
-    }
-
-    if (command == "encode-strict") {
-        const auto encoded = secids::isin64::encode_valid_isin(argument);
-        if (!encoded) {
-            std::cerr << "invalid ISIN or check digit\n";
-            return 1;
-        }
-        std::cout << *encoded << '\n';
-        return 0;
-    }
-
-    if (command == "decode") {
-        const auto value = secids::detail::parse_u64<secids::isin64::value_type>(argument);
-        if (!value) {
-            std::cerr << "invalid uint64 value\n";
-            return 1;
-        }
-        const auto decoded = secids::isin64::decode_isin(*value);
-        if (!decoded) {
-            std::cerr << "encoded value out of range\n";
-            return 1;
-        }
-        std::cout << secids::isin64::to_string(*decoded) << '\n';
-        return 0;
-    }
-
-    if (command == "check") {
-        if (!secids::isin64::is_valid_isin_format(argument)) {
-            std::cout << "format: invalid\n";
-            std::cout << "check_digit: invalid\n";
-            return 1;
-        }
-
-        std::cout << "format: valid\n";
-        std::cout << "check_digit: "
-                  << (secids::isin64::has_valid_check_digit(argument) ? "valid" : "invalid")
-                  << '\n';
-        return secids::isin64::has_valid_check_digit(argument) ? 0 : 1;
-    }
-
-    if (command == "check-digit") {
-        const auto check_digit = secids::isin64::calculate_check_digit(argument);
-        if (!check_digit) {
-            std::cerr << "invalid 11-character ISIN prefix\n";
-            return 1;
-        }
-        std::cout << *check_digit << '\n';
-        return 0;
-    }
-
-    print_usage(argv[0]);
-    return 2;
+    return secids::detail::run_identifier_cli<isin_cli_traits>(argc, argv);
 }

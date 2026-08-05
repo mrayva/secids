@@ -20,7 +20,7 @@ jobs:
     env:
       CXX: ${{ matrix.cxx }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Configure
         run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
@@ -66,13 +66,13 @@ jobs:
   openfigi-vocab:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Checkout string_bimap
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           repository: mrayva/string_bimap
-          ref: 26207540b204b7c124627922d08bfd579a0ef958
+          ref: 7b3c4dfe07d30cfc34fbcf8e177fcb63413e9007
           path: string_bimap
 
       - name: Configure
@@ -126,7 +126,7 @@ jobs:
     env:
       CXX: clang++
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Configure fuzzers
         run: cmake -S . -B build-fuzz -DSECIDS_BUILD_FUZZERS=ON -DBUILD_TESTING=OFF
